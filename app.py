@@ -16,15 +16,12 @@ import easyocr
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-load_dotenv()
-app.config['GOOGLE_CLIENT_ID'] = os.getenv("GOOGLE_CLIENT_ID")
-app.config['GOOGLE_CLIENT_SECRET'] = os.getenv("GOOGLE_CLIENT_SECRET")
-os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_TOKEN")
-
-# === Impor Baru untuk Fitur Replicate API ===
+# === Impor untuk Fitur Replicate API ===
 import replicate
 import requests
 # ==========================================
+
+load_dotenv()
 
 # --- 1. Konfigurasi Aplikasi & Database ---
 app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -36,7 +33,6 @@ app.config['GOOGLE_CLIENT_ID'] = os.getenv("GOOGLE_CLIENT_ID")
 app.config['GOOGLE_CLIENT_SECRET'] = os.getenv("GOOGLE_CLIENT_SECRET")
 
 # === Konfigurasi untuk Replicate API ===
-# PENTING: Tempel (paste) API token Anda di sini
 os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_TOKEN")
 # ======================================
 
@@ -51,7 +47,7 @@ oauth = OAuth(app)
 def inject_timedelta():
     return dict(timedelta=timedelta)
 
-# --- 2. Model Database & Konfigurasi Login (Tetap Sama) ---
+# --- 2. Model Database & Konfigurasi Login ---
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -68,7 +64,7 @@ class SwapResult(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- 3. Logika Inti AI (Tanpa GFPGAN) ---
+# --- 3. Logika Inti AI ---
 face_analyzer = None
 swapper = None
 try:
@@ -84,7 +80,7 @@ try:
 except Exception as e:
     print(f"!!! PERINGATAN: GAGAL MEMUAT MODEL AI LOKAL: {e}")
 
-    # --- Inisialisasi OCR Reader ---
+# --- Inisialisasi OCR Reader ---
 ocr_reader = None
 try:
     print("Memuat OCR Reader...")
@@ -97,21 +93,32 @@ def process_image(file_storage):
     in_memory_file = np.frombuffer(file_storage.read(), np.uint8)
     return cv2.imdecode(in_memory_file, cv2.IMREAD_COLOR)
 
-# --- 4. Rute Halaman (Frontend) (Tetap Sama) ---
+# --- 4. Rute Halaman (Frontend) ---
 @app.route("/")
-def home(): return render_template('landing.html', title="Selamat Datang")
-# ... (Semua rute halaman lain tetap sama) ...
+def home(): 
+    return render_template('landing.html', title="Selamat Datang")
+
 @app.route("/app")
 @login_required
-def face_swapper_app(): return render_template('index.html', title="AI Face Swapper")
+def face_swapper_app(): 
+    return render_template('index.html', title="AI Face Swapper")
+
+@app.route("/text-swap")
+@login_required
+def text_swapper_app():
+    return render_template('text_swapper.html', title="AI Text Swapper")
+
 @app.route("/profile")
 @login_required
-def profile(): return render_template('profile.html', title='Profil Saya')
+def profile(): 
+    return render_template('profile.html', title='Profil Saya')
+
 @app.route("/gallery")
 @login_required
 def gallery():
     results = SwapResult.query.filter_by(author=current_user).order_by(SwapResult.timestamp.desc()).all()
     return render_template('gallery.html', title='Galeri Saya', results=results)
+
 @app.route("/about")
 def about():
     return render_template('about.html', title='Tentang Kami')
@@ -124,11 +131,11 @@ def contact():
 def faq():
     return render_template('faq.html', title='FAQ')
 
-# --- 5. Rute Autentikasi (Tetap Sama) ---
-# ... (Semua rute autentikasi Anda tetap sama) ...
+# --- 5. Rute Autentikasi ---
 @app.route("/register", methods=['GET', 'POST'])
 def register():
-    if current_user.is_authenticated: return redirect(url_for('face_swapper_app'))
+    if current_user.is_authenticated: 
+        return redirect(url_for('face_swapper_app'))
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -145,7 +152,8 @@ def register():
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated: return redirect(url_for('face_swapper_app'))
+    if current_user.is_authenticated: 
+        return redirect(url_for('face_swapper_app'))
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -163,8 +171,7 @@ def logout():
     logout_user()
     return redirect(url_for('home'))
 
-# --- 6. Rute Login Google (Tetap Sama) ---
-# ... (Semua rute Google login Anda tetap sama) ...
+# --- 6. Rute Login Google ---
 @app.route('/google/')
 def google_login():
     oauth.register(name='google', client_id=app.config["GOOGLE_CLIENT_ID"], client_secret=app.config["GOOGLE_CLIENT_SECRET"], server_metadata_url='https://accounts.google.com/.well-known/openid-configuration', client_kwargs={'scope': 'openid email profile'})
@@ -184,11 +191,7 @@ def google_auth():
     login_user(user)
     return redirect(url_for('face_swapper_app'))
 
-    @app.route("/text-swap")
-@login_required
-def text_swapper_app():
-    return render_template('text_swapper.html', title="AI Text Swapper")
-
+# --- 7. Rute Text Swap Process ---
 @app.route('/text-swap-process', methods=['POST'])
 @login_required
 def text_swap_process():
@@ -267,7 +270,7 @@ def text_swap_process():
         print(f"Error saat text swap: {e}")
         return jsonify({'error': 'Terjadi kesalahan saat memproses gambar'}), 500
 
-# --- 7. Rute API untuk Face Swap (DIPERBARUI DENGAN Real-ESRGAN) ---
+# --- 8. Rute API untuk Face Swap ---
 @app.route('/swap', methods=['POST'])
 @login_required
 def swap_faces():
@@ -344,11 +347,10 @@ def swap_faces():
         print(f"Terjadi error saat swap: {e}")
         return jsonify({'error': 'Terjadi kesalahan internal saat memproses gambar'}), 500
 
-# --- Rute Hapus Riwayat (Tetap Sama) ---
+# --- 9. Rute Hapus Riwayat ---
 @app.route("/delete_swap/<int:swap_id>", methods=['POST'])
 @login_required
 def delete_swap(swap_id):
-    # ... (kode hapus Anda tetap sama) ...
     swap_to_delete = SwapResult.query.get_or_404(swap_id)
     if swap_to_delete.author != current_user:
         flash('Anda tidak memiliki izin untuk menghapus item ini.', 'danger')
@@ -366,7 +368,7 @@ def delete_swap(swap_id):
         db.session.rollback()
     return redirect(url_for('gallery'))
 
-# --- 8. Menjalankan Aplikasi & Membuat Database ---
+# --- 10. Menjalankan Aplikasi & Membuat Database ---
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
