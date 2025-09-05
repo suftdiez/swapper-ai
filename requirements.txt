@@ -1,0 +1,15 @@
+# Nama file: requirements.txt
+
+flask
+numpy
+opencv-python-headless
+insightface
+onnxruntime
+flask-login
+flask-bcrypt
+flask-sqlalchemy
+authlib
+easyocr
+pillow
+requests
+replicate

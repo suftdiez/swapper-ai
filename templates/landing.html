@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="landing-container">
+    <h1>Selamat Datang di AI Face Swapper</h1>
+    <p>Tukar wajah di gambar manapun dengan kekuatan AI. Cepat, mudah, dan menyenangkan!</p>
+    <a href="{{ url_for('register') }}">
+        <button class="btn-large btn-primary">
+            Mulai Sekarang Gratis <i class="fas fa-arrow-right"></i>
+        </button>
+    </a>
+</div>
+{% endblock content %}

@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="info-page-container">
+    <div class="info-header">
+        <i class="fas fa-question-circle"></i>
+        <h2>Pertanyaan Umum (FAQ)</h2>
+    </div>
+    <div class="info-content">
+        <div class="faq-item">
+            <h4>Bagaimana cara kerja AI Face Swapper?</h4>
+            <p>Aplikasi kami menggunakan model AI untuk mendeteksi fitur wajah pada gambar sumber dan target. Kemudian,
+                ia secara cerdas menggabungkan fitur wajah dari sumber ke target, menyesuaikan dengan pencahayaan dan
+                pose untuk hasil yang natural.</p>
+        </div>
+        <div class="faq-item">
+            <h4>Apakah gambar saya disimpan di server?</h4>
+            <p>Ya, untuk menyediakan fitur galeri riwayat, gambar hasil swap Anda disimpan secara aman di server kami
+                dan hanya dapat diakses oleh Anda setelah login.</p>
+        </div>
+        <div class="faq-item">
+            <h4>Apakah layanan ini gratis?</h4>
+            <p>Saat ini, semua fitur dasar di AI Swapper dapat digunakan secara gratis. Kami mungkin akan memperkenalkan
+                fitur premium di masa mendatang.</p>
+        </div>
+    </div>
+</div>
+{% endblock content %}

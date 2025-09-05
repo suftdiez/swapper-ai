@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <i class="fas fa-user-circle profile-icon"></i>
+        <h2>Profil Pengguna</h2>
+    </div>
+    <div class="profile-details">
+        <p><strong>Email Terdaftar:</strong></p>
+        <p class="user-email">{{ current_user.email }}</p>
+    </div>
+    <div class="profile-actions">
+        <a href="{{ url_for('logout') }}" class="btn-logout">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+</div>
+{% endblock content %}

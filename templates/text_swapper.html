@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+    <h1><i class="fas fa-font"></i> AI Text Swapper</h1>
+    <p>Unggah gambar dan ganti text yang ada dengan text baru menggunakan AI.</p>
+
+    <form id="text-swap-form">
+        <div class="upload-area" style="flex-direction: column;">
+            <div class="upload-box">
+                <label class="upload-title">Pilih Gambar</label>
+                <label for="text-image" class="upload-button">
+                    <i class="fas fa-upload"></i>
+                    <span>Pilih File</span>
+                </label>
+                <input type="file" id="text-image" name="image" accept="image/*" required>
+                <img id="text-preview" class="preview" src="#" alt="Pratinjau Gambar">
+            </div>
+
+            <div class="text-input-area" style="margin-top: 20px; display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <label for="original-text"
+                        style="display: block; margin-bottom: 8px; font-weight: bold; color: #374151;">Text Asli (yang
+                        mau diganti):</label>
+                    <input type="text" id="original-text" name="original_text"
+                        placeholder="Masukkan text yang ada di gambar"
+                        style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px;" required>
+                </div>
+                <div style="flex: 1;">
+                    <label for="new-text"
+                        style="display: block; margin-bottom: 8px; font-weight: bold; color: #374151;">Text Baru
+                        (pengganti):</label>
+                    <input type="text" id="new-text" name="new_text" placeholder="Masukkan text pengganti"
+                        style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px;" required>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" id="text-submit-btn"><i class="fas fa-exchange-alt"></i> Ganti Text!</button>
+    </form>
+
+    <div id="text-result-area" class="hidden">
+        <h2>Hasil:</h2>
+        <div id="text-loader" class="loader"></div>
+        <img id="text-result-image" src="#" alt="Hasil Text Swap">
+        <a href="#" id="text-download-btn" class="btn-download hidden" download="text-swapped-image.jpg">
+            <i class="fas fa-download"></i> Download Gambar
+        </a>
+
+        <!-- Share section yang sama seperti face swap -->
+        <div id="text-share-section" class="share-section hidden">
+            <div class="share-title">
+                <i class="fas fa-share-alt"></i>
+                Bagikan Hasil Anda
+            </div>
+            <div class="share-buttons">
+                <button class="share-btn share-facebook" onclick="shareToFacebook()">
+                    <i class="fab fa-facebook-f"></i> Facebook
+                </button>
+                <button class="share-btn share-twitter" onclick="shareToTwitter()">
+                    <i class="fab fa-twitter"></i> Twitter
+                </button>
+                <button class="share-btn share-whatsapp" onclick="shareToWhatsApp()">
+                    <i class="fab fa-whatsapp"></i> WhatsApp
+                </button>
+                <button class="share-btn share-instagram" onclick="shareToInstagram()">
+                    <i class="fab fa-instagram"></i> Instagram
+                </button>
+                <button class="share-btn share-copy" onclick="copyImageLink()">
+                    <i class="fas fa-copy"></i> Copy Link
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

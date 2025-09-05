@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="gallery-container">
+    <div class="gallery-header">
+        <i class="fas fa-images"></i>
+        <h2>Galeri Hasil Swap</h2>
+    </div>
+
+    {% if results %}
+    <div class="gallery-grid">
+        {% for result in results %}
+        <div class="gallery-item">
+            <img src="{{ url_for('static', filename=result.result_image_path.replace('\\', '/')) }}" alt="Hasil Swap">
+
+            <!-- FORMULIR HAPUS DIPERBARUI DI SINI -->
+            <!-- onsubmit dihapus dan diganti dengan class="delete-form" -->
+            <form action="{{ url_for('delete_swap', swap_id=result.id) }}" method="POST" class="delete-form">
+                <button type="submit" class="delete-btn">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </form>
+            <!-- =============================================== -->
+
+            <div class="gallery-item-info">
+                <p>{{ (result.timestamp + timedelta(hours=7)).strftime('%d %B %Y, %H:%M') }} WIB</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="gallery-empty">
+        <p>Anda belum memiliki riwayat hasil swap.</p>
+        <a href="{{ url_for('face_swapper_app') }}" class="btn-primary">
+            <i class="fas fa-plus"></i> Buat Gambar Baru
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock content %}

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or 'AI Face Swapper' }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome/css/all.min.css') }}">
+    <style>
+        .btn-google {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 12px !important;
+            padding: 10px 24px !important;
+            width: 100% !important;
+            max-width: 320px !important;
+            margin: 0 auto !important;
+            border: 1px solid #d1d5db !important;
+            border-radius: 8px !important;
+            background-color: #ffffff !important;
+            color: #374151 !important;
+            font-weight: 500 !important;
+            font-size: 15px !important;
+            text-decoration: none !important;
+            transition: background-color 0.2s ease-in-out !important;
+        }
+
+        .btn-google:hover {
+            background-color: #f9fafb !important;
+        }
+
+        .btn-google img {
+            width: 20px !important;
+            height: 20px !important;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="page-header">
+        <div class="nav-brand">
+            <a href="{{ url_for('home') }}">
+                <i class="fas fa-magic"></i> AI Swapper
+            </a>
+        </div>
+
+        <button class="hamburger-menu" id="hamburger-menu">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <nav class="navigation-menu" id="navigation-menu">
+            <div class="nav-buttons">
+                {% if current_user.is_authenticated %}
+                <!-- === TAMBAHKAN BLOK INI === -->
+                <a href="{{ url_for('face_swapper_app') }}">
+                    <button class="btn-secondary">
+                        <i class="fas fa-exchange-alt"></i> Face Swap
+                    </button>
+                </a>
+                <!-- =========================== -->
+                 
+                <a href="{{ url_for('text_swapper_app') }}">
+                    <button class="btn-secondary">
+                        <i class="fas fa-font"></i> Text Swap
+                    </button>
+                </a>
+
+                <a href="{{ url_for('gallery') }}">
+                    <button class="btn-secondary">
+                        <i class="fas fa-images"></i> Galeri
+                    </button>
+                </a>
+                <a href="{{ url_for('profile') }}">
+                    <button class="btn-secondary">
+                        <i class="fas fa-user"></i> Profil
+                    </button>
+                </a>
+                <a href="{{ url_for('logout') }}">
+                    <button class="btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </a>
+                {% else %}
+                <a href="{{ url_for('login') }}">
+                    <button class="btn-secondary">
+                        <i class="fas fa-sign-in-alt"></i> Sign In
+                    </button>
+                </a>
+                <a href="{{ url_for('register') }}">
+                    <button class="btn-primary">
+                        <i class="fas fa-user-plus"></i> Get Started
+                    </button>
+                </a>
+                {% endif %}
+                <!-- Tambahkan tombol ini di dalam div.nav-buttons -->
+                <button class="theme-toggle" id="theme-toggle" title="Ganti tema">
+                    <i class="fas fa-moon"></i> <!-- Ikon untuk mode gelap -->
+                    <i class="fas fa-sun"></i> <!-- Ikon untuk mode terang -->
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="page-footer">
+        <div class="footer-links">
+            <a href="{{ url_for('about') }}">Tentang Kami</a>
+            <a href="{{ url_for('contact') }}">Kontak</a>
+            <a href="{{ url_for('faq') }}">FAQ</a>
+        </div>
+        <div class="footer-copyright">
+            <p>&copy; 2025 AI Swapper. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+
+</html>
