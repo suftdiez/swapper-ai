@@ -13,3 +13,5 @@ easyocr
 pillow
 requests
 replicate
+scikit-learn  
+python-dotenv 

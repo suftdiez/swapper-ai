@@ -2,7 +2,18 @@
 {% block content %}
 <div class="container">
     <h1><i class="fas fa-font"></i> AI Text Swapper</h1>
-    <p>Unggah gambar dan ganti text yang ada dengan text baru menggunakan AI.</p>
+    <p>Unggah gambar dan ganti text yang ada dengan text baru menggunakan AI. Aplikasi akan secara otomatis mencocokkan font, ukuran, dan warna!</p>
+
+    <!-- Tips untuk pengguna -->
+    <div class="tips-section" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+        <h3 style="margin: 0 0 10px 0; color: #1565c0;"><i class="fas fa-lightbulb"></i> Tips untuk Hasil Terbaik:</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #1976d2; line-height: 1.6;">
+            <li>Pastikan text di gambar cukup jelas dan kontras dengan background</li>
+            <li>Gunakan text yang spesifik dan unik (hindari kata umum seperti "a", "the")</li>
+            <li>Text pengganti sebaiknya panjangnya mirip dengan text asli</li>
+            <li>Aplikasi akan otomatis mencocokkan warna, ukuran, dan gaya font</li>
+        </ul>
+    </div>
 
     <form id="text-swap-form">
         <div class="upload-area" style="flex-direction: column;">
@@ -19,27 +30,39 @@
             <div class="text-input-area" style="margin-top: 20px; display: flex; gap: 20px;">
                 <div style="flex: 1;">
                     <label for="original-text"
-                        style="display: block; margin-bottom: 8px; font-weight: bold; color: #374151;">Text Asli (yang
-                        mau diganti):</label>
+                        style="display: block; margin-bottom: 8px; font-weight: bold; color: #374151;">
+                        <i class="fas fa-search"></i> Text Asli (yang mau diganti):</label>
                     <input type="text" id="original-text" name="original_text"
-                        placeholder="Masukkan text yang ada di gambar"
-                        style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px;" required>
+                        placeholder="Contoh: 'Welcome' atau 'Hello World'"
+                        style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace;" required>
+                    <small style="color: #6b7280; font-style: italic;">Tulis text persis seperti yang terlihat di gambar</small>
                 </div>
                 <div style="flex: 1;">
                     <label for="new-text"
-                        style="display: block; margin-bottom: 8px; font-weight: bold; color: #374151;">Text Baru
-                        (pengganti):</label>
-                    <input type="text" id="new-text" name="new_text" placeholder="Masukkan text pengganti"
-                        style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px;" required>
+                        style="display: block; margin-bottom: 8px; font-weight: bold; color: #374151;">
+                        <i class="fas fa-edit"></i> Text Baru (pengganti):</label>
+                    <input type="text" id="new-text" name="new_text" placeholder="Contoh: 'Selamat Datang' atau 'Halo Dunia'"
+                        style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace;" required>
+                    <small style="color: #6b7280; font-style: italic;">Text yang akan mengganti text asli</small>
                 </div>
             </div>
         </div>
 
-        <button type="submit" id="text-submit-btn"><i class="fas fa-exchange-alt"></i> Ganti Text!</button>
+        <button type="submit" id="text-submit-btn" style="margin-top: 25px;">
+            <i class="fas fa-magic"></i> Ganti Text dengan AI!
+        </button>
     </form>
 
     <div id="text-result-area" class="hidden">
         <h2>Hasil:</h2>
+        
+        <!-- Info deteksi -->
+        <div id="detection-info" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none;">
+            <h4 style="margin: 0 0 8px 0; color: #15803d;"><i class="fas fa-check-circle"></i> Text Berhasil Terdeteksi:</h4>
+            <p style="margin: 0; font-family: monospace; color: #166534; font-weight: bold;" id="detected-text-display"></p>
+            <small style="color: #22c55e;">Confidence: <span id="confidence-display"></span></small>
+        </div>
+        
         <div id="text-loader" class="loader"></div>
         <img id="text-result-image" src="#" alt="Hasil Text Swap">
         <a href="#" id="text-download-btn" class="btn-download hidden" download="text-swapped-image.jpg">
@@ -72,4 +95,108 @@
         </div>
     </div>
 </div>
+
+<script>
+// Update script untuk menampilkan info deteksi
+document.addEventListener("DOMContentLoaded", () => {
+    const textSwapForm = document.getElementById("text-swap-form");
+
+    if (textSwapForm) {
+        const textImageInput = document.getElementById("text-image");
+        const textPreview = document.getElementById("text-preview");
+        const textResultArea = document.getElementById("text-result-area");
+        const textResultImage = document.getElementById("text-result-image");
+        const textLoader = document.getElementById("text-loader");
+        const textSubmitBtn = document.getElementById("text-submit-btn");
+        const textDownloadBtn = document.getElementById("text-download-btn");
+        const textShareSection = document.getElementById("text-share-section");
+        const detectionInfo = document.getElementById("detection-info");
+        const detectedTextDisplay = document.getElementById("detected-text-display");
+        const confidenceDisplay = document.getElementById("confidence-display");
+
+        // Preview gambar
+        textImageInput.addEventListener("change", () => {
+            if (textImageInput.files && textImageInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    textPreview.src = e.target.result;
+                    textPreview.style.display = "block";
+                };
+                reader.readAsDataURL(textImageInput.files[0]);
+            }
+        });
+
+        // Submit form dengan info detection
+        textSwapForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            textResultArea.classList.remove("hidden");
+            textLoader.style.display = "block";
+            textResultImage.style.display = "none";
+            textDownloadBtn.classList.add("hidden");
+            textShareSection.classList.add("hidden");
+            detectionInfo.style.display = "none";
+            textSubmitBtn.disabled = true;
+            textSubmitBtn.innerHTML =
+                '<i class="fas fa-spinner fa-spin"></i> AI sedang memproses...';
+
+            const formData = new FormData();
+            formData.append("image", textImageInput.files[0]);
+            formData.append(
+                "original_text",
+                document.getElementById("original-text").value
+            );
+            formData.append("new_text", document.getElementById("new-text").value);
+
+            try {
+                const response = await fetch("/text-swap-process", {
+                    method: "POST",
+                    body: formData,
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    textResultImage.src = data.result_image;
+                    textResultImage.style.display = "block";
+                    textDownloadBtn.href = data.result_image;
+                    textDownloadBtn.classList.remove("hidden");
+                    textShareSection.classList.remove("hidden");
+                    
+                    // Tampilkan info deteksi jika ada
+                    if (data.detected_text && data.confidence) {
+                        detectedTextDisplay.textContent = data.detected_text;
+                        confidenceDisplay.textContent = data.confidence;
+                        detectionInfo.style.display = "block";
+                    }
+                } else {
+                    textShareSection.classList.add("hidden");
+                    detectionInfo.style.display = "none";
+                    Swal.fire({
+                        icon: "error",
+                        title: "Oops... Terjadi Kesalahan",
+                        text: data.error,
+                        confirmButtonColor: "#d33",
+                        confirmButtonText: "Mengerti",
+                    });
+                }
+            } catch (error) {
+                textShareSection.classList.add("hidden");
+                detectionInfo.style.display = "none";
+                Swal.fire({
+                    icon: "error",
+                    title: "Koneksi Gagal",
+                    text: "Tidak dapat terhubung ke server.",
+                    confirmButtonColor: "#d33",
+                    confirmButtonText: "Mengerti",
+                });
+                console.error("Fetch error:", error);
+            } finally {
+                textLoader.style.display = "none";
+                textSubmitBtn.disabled = false;
+                textSubmitBtn.innerHTML =
+                    '<i class="fas fa-magic"></i> Ganti Text dengan AI!';
+            }
+        });
+    }
+});
+</script>
 {% endblock content %}

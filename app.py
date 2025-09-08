@@ -17,6 +17,8 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 
 # === Impor untuk Fitur Replicate API ===
+from sklearn.cluster import KMeans
+import math
 import replicate
 import requests
 # ==========================================
@@ -88,6 +90,320 @@ try:
     print("OCR Reader siap.")
 except Exception as e:
     print(f"!!! PERINGATAN: GAGAL MEMUAT OCR READER: {e}")
+
+# === PERBAIKAN INDENTASI - COPY PASTE KODE INI ===
+# Pastikan tidak ada tab, hanya gunakan 4 spasi untuk indentasi
+
+def analyze_text_properties(image_np, bbox, text, confidence):
+    """
+    Analisis properti teks yang terdeteksi untuk matching yang lebih baik
+    """
+    try:
+        # Konversi bbox ke koordinat integer
+        top_left = [int(val) for val in bbox[0]]
+        bottom_right = [int(val) for val in bbox[2]]
+        
+        # Ekstrak area teks
+        text_area = image_np[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
+        
+        if text_area.size == 0:
+            return None
+            
+        # Hitung ukuran teks
+        width = bottom_right[0] - top_left[0]
+        height = bottom_right[1] - top_left[1]
+        
+        # Estimasi font size berdasarkan tinggi
+        estimated_font_size = max(12, int(height * 0.7))
+        
+        # Analisis warna dominan di area teks
+        text_colors = analyze_text_color(text_area)
+        background_color = analyze_background_color(image_np, bbox)
+        
+        return {
+            'bbox': bbox,
+            'width': width,
+            'height': height,
+            'estimated_font_size': estimated_font_size,
+            'text_color': text_colors['dominant'],
+            'background_color': background_color,
+            'top_left': top_left,
+            'bottom_right': bottom_right
+        }
+        
+    except Exception as e:
+        print(f"Error analyzing text properties: {e}")
+        return None
+
+
+def analyze_text_color(text_area):
+    """
+    Analisis warna teks dominan
+    """
+    try:
+        # Konversi ke RGB jika perlu
+        if len(text_area.shape) == 3:
+            text_area_rgb = cv2.cvtColor(text_area, cv2.COLOR_BGR2RGB)
+        else:
+            text_area_rgb = text_area
+            
+        # Reshape untuk clustering
+        pixels = text_area_rgb.reshape((-1, 3))
+        
+        # Gunakan KMeans untuk find warna dominan
+        kmeans = KMeans(n_clusters=2, random_state=42, n_init=10)
+        kmeans.fit(pixels)
+        
+        colors = kmeans.cluster_centers_.astype(int)
+        labels = kmeans.labels_
+        
+        # Hitung frekuensi setiap cluster
+        unique, counts = np.unique(labels, return_counts=True)
+        
+        # Pilih warna yang lebih kontras (biasanya teks)
+        color1, color2 = colors[0], colors[1]
+        
+        # Pilih warna yang lebih gelap/terang sebagai teks
+        brightness1 = np.mean(color1)
+        brightness2 = np.mean(color2)
+        
+        if brightness1 < brightness2:
+            text_color = tuple(color1)
+        else:
+            text_color = tuple(color2)
+            
+        return {
+            'dominant': text_color,
+            'colors': colors
+        }
+        
+    except Exception as e:
+        print(f"Error analyzing text color: {e}")
+        return {'dominant': (0, 0, 0), 'colors': [(0, 0, 0)]}
+
+
+def analyze_background_color(image_np, bbox):
+    """
+    Analisis warna background di sekitar teks
+    """
+    try:
+        top_left = [int(val) for val in bbox[0]]
+        bottom_right = [int(val) for val in bbox[2]]
+        
+        # Expand area sedikit untuk capture background
+        margin = 10
+        expanded_top = max(0, top_left[1] - margin)
+        expanded_bottom = min(image_np.shape[0], bottom_right[1] + margin)
+        expanded_left = max(0, top_left[0] - margin)
+        expanded_right = min(image_np.shape[1], bottom_right[0] + margin)
+        
+        # Ambil area yang diperluas
+        expanded_area = image_np[expanded_top:expanded_bottom, expanded_left:expanded_right]
+        
+        if expanded_area.size == 0:
+            return (255, 255, 255)
+            
+        # Konversi ke RGB
+        if len(expanded_area.shape) == 3:
+            expanded_area_rgb = cv2.cvtColor(expanded_area, cv2.COLOR_BGR2RGB)
+        else:
+            expanded_area_rgb = expanded_area
+            
+        # Ambil pixel dari border area (bukan tengah yang merupakan teks)
+        border_pixels = []
+        h, w = expanded_area_rgb.shape[:2]
+        
+        # Top and bottom borders
+        border_pixels.extend(expanded_area_rgb[0:margin].reshape((-1, 3)))
+        border_pixels.extend(expanded_area_rgb[h-margin:h].reshape((-1, 3)))
+        
+        # Left and right borders  
+        border_pixels.extend(expanded_area_rgb[:, 0:margin].reshape((-1, 3)))
+        border_pixels.extend(expanded_area_rgb[:, w-margin:w].reshape((-1, 3)))
+        
+        if len(border_pixels) > 0:
+            border_pixels = np.array(border_pixels)
+            background_color = tuple(np.mean(border_pixels, axis=0).astype(int))
+        else:
+            # Fallback ke warna rata-rata
+            background_color = tuple(np.mean(expanded_area_rgb, axis=(0, 1)).astype(int))
+            
+        return background_color
+        
+    except Exception as e:
+        print(f"Error analyzing background color: {e}")
+        return (255, 255, 255)
+
+
+def create_better_text_replacement(image, text_props, new_text):
+    """
+    Buat replacement teks yang lebih baik dengan properties matching
+    """
+    try:
+        # Buat background patch yang seamless
+        background_patch = create_seamless_background(image, text_props)
+        
+        # Tempel background patch
+        image.paste(background_patch, (text_props['top_left'][0], text_props['top_left'][1]))
+        
+        # Cari font yang sesuai
+        font = find_best_matching_font(text_props['estimated_font_size'], new_text, 
+                                     text_props['width'], text_props['height'])
+        
+        # Gambar teks baru
+        draw = ImageDraw.Draw(image)
+        
+        # Hitung posisi untuk centering
+        text_bbox = draw.textbbox((0, 0), new_text, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+        
+        # Posisi teks di tengah area
+        x = text_props['top_left'][0] + (text_props['width'] - text_width) // 2
+        y = text_props['top_left'][1] + (text_props['height'] - text_height) // 2
+        
+        # Gambar teks dengan warna yang sesuai
+        draw.text((x, y), new_text, fill=text_props['text_color'], font=font)
+        
+        return image
+        
+    except Exception as e:
+        print(f"Error creating text replacement: {e}")
+        return image
+
+
+def create_seamless_background(image, text_props):
+    """
+    Buat background yang seamless untuk mengganti area teks
+    """
+    try:
+        # Ambil area sekitar teks untuk sampling
+        margin = 5
+        x1, y1 = text_props['top_left']
+        x2, y2 = text_props['bottom_right']
+        
+        # Expand untuk sampling
+        sample_x1 = max(0, x1 - margin * 2)
+        sample_y1 = max(0, y1 - margin * 2)
+        sample_x2 = min(image.width, x2 + margin * 2)
+        sample_y2 = min(image.height, y2 + margin * 2)
+        
+        # Crop area sampling
+        sample_area = image.crop((sample_x1, sample_y1, sample_x2, sample_y2))
+        
+        # Buat patch dengan ukuran text area
+        patch_width = x2 - x1
+        patch_height = y2 - y1
+        
+        # Method 1: Gunakan warna background dominan
+        background_patch = Image.new('RGB', (patch_width, patch_height), 
+                                   text_props['background_color'])
+        
+        # Method 2: Jika memungkinkan, gunakan content-aware fill sederhana
+        # dengan blur dan resample dari area sekitar
+        if sample_area.width > 10 and sample_area.height > 10:
+            # Resize sample area ke ukuran patch
+            resized_sample = sample_area.resize((patch_width, patch_height), 
+                                              Image.LANCZOS)
+            
+            # Blur untuk mengurangi detail
+            from PIL import ImageEnhance
+            blurred = resized_sample.filter(ImageEnhance.Color(resized_sample).enhance(0.8))
+            
+            # Blend dengan background color
+            background_patch = Image.blend(background_patch, blurred, 0.3)
+        
+        return background_patch
+        
+    except Exception as e:
+        print(f"Error creating seamless background: {e}")
+        # Fallback ke warna solid
+        return Image.new('RGB', (text_props['width'], text_props['height']), 
+                        text_props['background_color'])
+
+
+def find_best_matching_font(target_size, text, max_width, max_height):
+    """
+    Cari font yang paling sesuai dengan ukuran target
+    """
+    # Daftar font yang umum tersedia
+    font_paths = [
+        "arial.ttf", "Arial.ttf",
+        "calibri.ttf", "Calibri.ttf", 
+        "times.ttf", "Times.ttf",
+        "verdana.ttf", "Verdana.ttf",
+        "tahoma.ttf", "Tahoma.ttf",
+        "trebuc.ttf", "Trebuchet.ttf",
+        "comic.ttf", "Comic.ttf",
+        "impact.ttf", "Impact.ttf"
+    ]
+    
+    # Coba berbagai lokasi font Windows
+    font_directories = [
+        "C:/Windows/Fonts/",
+        "C:/WINDOWS/Fonts/",
+        "/System/Library/Fonts/",  # macOS
+        "/usr/share/fonts/",       # Linux
+        ""  # Current directory / default
+    ]
+    
+    best_font = None
+    best_size = target_size
+    
+    # Coba find font yang tersedia
+    for font_name in font_paths:
+        for font_dir in font_directories:
+            try:
+                font_path = os.path.join(font_dir, font_name)
+                if os.path.exists(font_path):
+                    # Test dengan ukuran target
+                    test_font = ImageFont.truetype(font_path, target_size)
+                    
+                    # Buat dummy image untuk test ukuran text
+                    dummy_img = Image.new('RGB', (1, 1))
+                    dummy_draw = ImageDraw.Draw(dummy_img)
+                    
+                    # Cek ukuran text dengan font ini
+                    bbox = dummy_draw.textbbox((0, 0), text, font=test_font)
+                    text_width = bbox[2] - bbox[0]
+                    text_height = bbox[3] - bbox[1]
+                    
+                    # Adjust font size jika terlalu besar
+                    if text_width > max_width or text_height > max_height:
+                        # Hitung scaling factor
+                        scale_w = max_width / text_width if text_width > 0 else 1
+                        scale_h = max_height / text_height if text_height > 0 else 1
+                        scale = min(scale_w, scale_h, 1.0)
+                        
+                        adjusted_size = int(target_size * scale * 0.8)  # 80% untuk safety margin
+                        adjusted_size = max(8, adjusted_size)  # Minimum size
+                        
+                        best_font = ImageFont.truetype(font_path, adjusted_size)
+                        best_size = adjusted_size
+                    else:
+                        best_font = test_font
+                        best_size = target_size
+                    
+                    # Jika sudah dapat font yang bagus, stop searching
+                    if best_font:
+                        print(f"Using font: {font_path} with size {best_size}")
+                        return best_font
+                        
+            except Exception as e:
+                continue
+    
+    # Fallback ke default font jika tidak ada yang cocok
+    try:
+        # Adjust size untuk default font
+        adjusted_size = min(target_size, max_width // len(text) if len(text) > 0 else target_size)
+        adjusted_size = max(8, adjusted_size)
+        best_font = ImageFont.load_default()
+        print(f"Using default font with estimated size {adjusted_size}")
+    except:
+        best_font = ImageFont.load_default()
+        print("Using basic default font")
+    
+    return best_font
 
 def process_image(file_storage):
     in_memory_file = np.frombuffer(file_storage.read(), np.uint8)
@@ -215,31 +531,41 @@ def text_swap_process():
         image_np = np.array(image)
         
         # Deteksi text dengan OCR
-        results = ocr_reader.readtext(image_np)
+        results = ocr_reader.readtext(image_np, detail=1)
         
-        # Cari text yang cocok
+        # Cari text yang cocok dan analisis properties
         text_found = False
+        best_match = None
+        best_confidence = 0
+        
         for (bbox, text, confidence) in results:
-            if confidence > 0.5 and original_text.lower() in text.lower():
-                text_found = True
-                # Hapus text lama dengan menggambar kotak putih
-                top_left = tuple([int(val) for val in bbox[0]])
-                bottom_right = tuple([int(val) for val in bbox[2]])
-                
-                draw = ImageDraw.Draw(image)
-                draw.rectangle([top_left, bottom_right], fill='white')
-                
-                # Tambahkan text baru
-                try:
-                    font = ImageFont.truetype("arial.ttf", 20)
-                except:
-                    font = ImageFont.load_default()
-                
-                draw.text(top_left, new_text, fill='black', font=font)
-                break
+            if confidence > 0.3:  # Lower threshold untuk lebih fleksibel
+                # Cek kecocokan text (case insensitive dan partial matching)
+                if (original_text.lower() in text.lower() or 
+                    text.lower() in original_text.lower() or
+                    any(word.lower() in text.lower() for word in original_text.split()) or
+                    any(word.lower() in original_text.lower() for word in text.split())):
+                    
+                    if confidence > best_confidence:
+                        best_confidence = confidence
+                        best_match = (bbox, text, confidence)
+                        text_found = True
         
         if not text_found:
-            return jsonify({'error': f'Text "{original_text}" tidak ditemukan dalam gambar'}), 400
+            return jsonify({'error': f'Text "{original_text}" tidak ditemukan dalam gambar. Coba dengan text yang lebih spesifik.'}), 400
+        
+        # Analisis properties dari text yang ditemukan
+        bbox, detected_text, confidence = best_match
+        text_props = analyze_text_properties(image_np, bbox, detected_text, confidence)
+        
+        if not text_props:
+            return jsonify({'error': 'Tidak dapat menganalisis properti text'}), 400
+        
+        print(f"Detected text: '{detected_text}' with confidence {confidence:.2f}")
+        print(f"Text properties: {text_props}")
+        
+        # Buat replacement yang lebih baik
+        result_image = create_better_text_replacement(image, text_props, new_text)
         
         # Simpan hasil
         upload_folder = os.path.join(app.root_path, 'static', 'uploads')
@@ -250,7 +576,8 @@ def text_swap_process():
         result_filename = f"{unique_id}_text_swap.jpg"
         result_path = os.path.join(upload_folder, result_filename)
         
-        image.save(result_path, 'JPEG')
+        # Simpan dengan kualitas tinggi
+        result_image.save(result_path, 'JPEG', quality=95)
         
         # Simpan ke database
         relative_path = os.path.join('uploads', result_filename)
@@ -260,15 +587,21 @@ def text_swap_process():
         
         # Convert ke base64 untuk response
         buffer = io.BytesIO()
-        image.save(buffer, format='JPEG')
+        result_image.save(buffer, format='JPEG', quality=95)
         img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
         result_base64 = f"data:image/jpeg;base64,{img_base64}"
         
-        return jsonify({'result_image': result_base64})
+        return jsonify({
+            'result_image': result_base64,
+            'detected_text': detected_text,
+            'confidence': f"{confidence:.2f}"
+        })
         
     except Exception as e:
         print(f"Error saat text swap: {e}")
-        return jsonify({'error': 'Terjadi kesalahan saat memproses gambar'}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Terjadi kesalahan saat memproses gambar: {str(e)}'}), 500
 
 # --- 8. Rute API untuk Face Swap ---
 @app.route('/swap', methods=['POST'])
