@@ -1,94 +1,202 @@
 {% extends "layout.html" %}
 {% block content %}
 <div class="container">
-    <h1><i class="fas fa-font"></i> AI Text Swapper</h1>
-    <p>Unggah gambar dan ganti text yang ada dengan text baru menggunakan AI. Aplikasi akan secara otomatis mencocokkan font, ukuran, dan warna!</p>
+    <h1><i class="fas fa-font"></i> AI Text Swapper Enhanced</h1>
+    <p>Unggah gambar dan ganti text yang ada dengan text baru menggunakan AI. Aplikasi akan secara otomatis mencocokkan font, ukuran, warna, dan style secara akurat!</p>
 
-    <!-- Tips untuk pengguna -->
-    <div class="tips-section" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
-        <h3 style="margin: 0 0 10px 0; color: #1565c0;"><i class="fas fa-lightbulb"></i> Tips untuk Hasil Terbaik:</h3>
-        <ul style="margin: 0; padding-left: 20px; color: #1976d2; line-height: 1.6;">
-            <li>Pastikan text di gambar cukup jelas dan kontras dengan background</li>
-            <li>Gunakan text yang spesifik dan unik (hindari kata umum seperti "a", "the")</li>
-            <li>Text pengganti sebaiknya panjangnya mirip dengan text asli</li>
-            <li>Aplikasi akan otomatis mencocokkan warna, ukuran, dan gaya font</li>
-        </ul>
+    <!-- Enhanced Tips Section -->
+    <div class="enhanced-tips-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 16px; margin-bottom: 30px; color: white; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);">
+        <h3 style="margin: 0 0 15px 0; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-magic" style="color: #ffd700;"></i> 
+            Tips untuk Hasil Maksimal
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; border-left: 4px solid #ffd700;">
+                <h4 style="margin: 0 0 8px 0; color: #ffd700;"><i class="fas fa-eye"></i> Kualitas Gambar</h4>
+                <ul style="margin: 0; padding-left: 18px; line-height: 1.6;">
+                    <li>Text harus jelas dan kontras dengan background</li>
+                    <li>Resolusi gambar minimal 500px untuk hasil optimal</li>
+                    <li>Hindari gambar yang blur atau berkualitas rendah</li>
+                </ul>
+            </div>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; border-left: 4px solid #00ff88;">
+                <h4 style="margin: 0 0 8px 0; color: #00ff88;"><i class="fas fa-search"></i> Text Detection</h4>
+                <ul style="margin: 0; padding-left: 18px; line-height: 1.6;">
+                    <li>Gunakan text yang spesifik (contoh: "PES 2013", "SPIDER-MAN")</li>
+                    <li>Hindari kata umum seperti "a", "the", "and"</li>
+                    <li>Tulis persis seperti yang terlihat di gambar</li>
+                </ul>
+            </div>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; border-left: 4px solid #ff6b6b;">
+                <h4 style="margin: 0 0 8px 0; color: #ff6b6b;"><i class="fas fa-palette"></i> Style Matching</h4>
+                <ul style="margin: 0; padding-left: 18px; line-height: 1.6;">
+                    <li>AI otomatis mendeteksi warna, ukuran, dan style font</li>
+                    <li>Text baru akan menyesuaikan properties text asli</li>
+                    <li>Background akan di-reconstruct secara natural</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Examples Section -->
+    <div class="examples-section" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 2px dashed #4ecdc4;">
+        <h3 style="margin: 0 0 15px 0; color: #2c3e50; text-align: center;">
+            <i class="fas fa-star" style="color: #f39c12;"></i> 
+            Contoh Kasus yang Didukung
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; text-align: center;">
+            <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="font-size: 24px; margin-bottom: 8px;">🎮</div>
+                <strong style="color: #e74c3c;">Game Covers</strong>
+                <p style="margin: 5px 0 0 0; font-size: 14px; color: #7f8c8d;">PES 2013 → ANJIM<br>FIFA 2024 → BOLA AJAIB</p>
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="font-size: 24px; margin-bottom: 8px;">🎬</div>
+                <strong style="color: #9b59b6;">Movie Posters</strong>
+                <p style="margin: 5px 0 0 0; font-size: 14px; color: #7f8c8d;">SPIDER-MAN → LABA-LABA<br>AVENGERS → SUPERHERO</p>
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="font-size: 24px; margin-bottom: 8px;">📱</div>
+                <strong style="color: #3498db;">App Icons</strong>
+                <p style="margin: 5px 0 0 0; font-size: 14px; color: #7f8c8d;">Instagram → MyGram<br>WhatsApp → ChatKu</p>
+            </div>
+        </div>
     </div>
 
     <form id="text-swap-form">
         <div class="upload-area" style="flex-direction: column;">
-            <div class="upload-box">
-                <label class="upload-title">Pilih Gambar</label>
-                <label for="text-image" class="upload-button">
+            <!-- Enhanced Upload Box -->
+            <div class="upload-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: 3px dashed rgba(255,255,255,0.3); color: white;">
+                <div style="font-size: 48px; margin-bottom: 15px; opacity: 0.8;">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <label class="upload-title" style="color: white; font-size: 18px; margin-bottom: 20px;">Pilih Gambar untuk Diproses</label>
+                <label for="text-image" class="upload-button" style="background: rgba(255,255,255,0.2); color: white; border: 2px solid rgba(255,255,255,0.3); backdrop-filter: blur(10px);">
                     <i class="fas fa-upload"></i>
-                    <span>Pilih File</span>
+                    <span>Browse Files</span>
                 </label>
                 <input type="file" id="text-image" name="image" accept="image/*" required>
-                <img id="text-preview" class="preview" src="#" alt="Pratinjau Gambar">
+                <img id="text-preview" class="preview" src="#" alt="Pratinjau Gambar" style="margin-top: 20px; max-height: 200px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
             </div>
 
-            <div class="text-input-area" style="margin-top: 20px; display: flex; gap: 20px;">
-                <div style="flex: 1;">
-                    <label for="original-text"
-                        style="display: block; margin-bottom: 8px; font-weight: bold; color: #374151;">
-                        <i class="fas fa-search"></i> Text Asli (yang mau diganti):</label>
-                    <input type="text" id="original-text" name="original_text"
-                        placeholder="Contoh: 'Welcome' atau 'Hello World'"
-                        style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace;" required>
-                    <small style="color: #6b7280; font-style: italic;">Tulis text persis seperti yang terlihat di gambar</small>
-                </div>
-                <div style="flex: 1;">
-                    <label for="new-text"
-                        style="display: block; margin-bottom: 8px; font-weight: bold; color: #374151;">
-                        <i class="fas fa-edit"></i> Text Baru (pengganti):</label>
-                    <input type="text" id="new-text" name="new_text" placeholder="Contoh: 'Selamat Datang' atau 'Halo Dunia'"
-                        style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace;" required>
-                    <small style="color: #6b7280; font-style: italic;">Text yang akan mengganti text asli</small>
+            <!-- Enhanced Text Input Area -->
+            <div class="enhanced-text-input-area" style="margin-top: 30px; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); border: 2px solid #e3f2fd;">
+                <h3 style="text-align: center; margin: 0 0 25px 0; color: #2c3e50; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <i class="fas fa-edit" style="color: #667eea;"></i>
+                    Text Configuration
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+                    <div class="input-group">
+                        <label for="original-text" style="display: block; margin-bottom: 10px; font-weight: 600; color: #e74c3c; font-size: 16px;">
+                            <i class="fas fa-crosshairs"></i> Text Asli (Target)
+                        </label>
+                        <input type="text" id="original-text" name="original_text"
+                            placeholder='Contoh: "PES 2013" atau "SPIDER-MAN"'
+                            style="width: 100%; padding: 15px; border: 2px solid #e74c3c; border-radius: 10px; font-family: 'Courier New', monospace; font-size: 16px; transition: all 0.3s ease;" required>
+                        <small style="color: #e74c3c; font-style: italic; display: block; margin-top: 8px;">
+                            <i class="fas fa-info-circle"></i> Tulis text persis seperti di gambar
+                        </small>
+                    </div>
+                    <div class="input-group">
+                        <label for="new-text" style="display: block; margin-bottom: 10px; font-weight: 600; color: #27ae60; font-size: 16px;">
+                            <i class="fas fa-magic"></i> Text Pengganti
+                        </label>
+                        <input type="text" id="new-text" name="new_text" 
+                            placeholder='Contoh: "ANJIM" atau "LABA-LABA"'
+                            style="width: 100%; padding: 15px; border: 2px solid #27ae60; border-radius: 10px; font-family: 'Courier New', monospace; font-size: 16px; transition: all 0.3s ease;" required>
+                        <small style="color: #27ae60; font-style: italic; display: block; margin-top: 8px;">
+                            <i class="fas fa-info-circle"></i> Text yang akan mengganti text asli
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <button type="submit" id="text-submit-btn" style="margin-top: 25px;">
-            <i class="fas fa-magic"></i> Ganti Text dengan AI!
+        <!-- Enhanced Submit Button -->
+        <button type="submit" id="text-submit-btn" style="margin-top: 30px; padding: 18px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: 600; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4); transition: all 0.3s ease; cursor: pointer;">
+            <i class="fas fa-magic" style="margin-right: 10px;"></i>
+            Transform Text dengan AI!
         </button>
     </form>
 
-    <div id="text-result-area" class="hidden">
-        <h2>Hasil:</h2>
-        
-        <!-- Info deteksi -->
-        <div id="detection-info" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none;">
-            <h4 style="margin: 0 0 8px 0; color: #15803d;"><i class="fas fa-check-circle"></i> Text Berhasil Terdeteksi:</h4>
-            <p style="margin: 0; font-family: monospace; color: #166534; font-weight: bold;" id="detected-text-display"></p>
-            <small style="color: #22c55e;">Confidence: <span id="confidence-display"></span></small>
+    <!-- Enhanced Result Area -->
+    <div id="text-result-area" class="hidden" style="margin-top: 50px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h2 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 32px; margin: 0;">
+                <i class="fas fa-star"></i> Hasil Transformasi
+            </h2>
         </div>
         
-        <div id="text-loader" class="loader"></div>
-        <img id="text-result-image" src="#" alt="Hasil Text Swap">
-        <a href="#" id="text-download-btn" class="btn-download hidden" download="text-swapped-image.jpg">
-            <i class="fas fa-download"></i> Download Gambar
-        </a>
-
-        <!-- Share section yang sama seperti face swap -->
-        <div id="text-share-section" class="share-section hidden">
-            <div class="share-title">
-                <i class="fas fa-share-alt"></i>
-                Bagikan Hasil Anda
+        <!-- Enhanced Detection Info -->
+        <div id="detection-info" class="detection-info-enhanced" style="background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); border: 2px solid #28a745; padding: 20px; border-radius: 12px; margin-bottom: 25px; display: none; box-shadow: 0 4px 20px rgba(40, 167, 69, 0.2);">
+            <h4 style="margin: 0 0 10px 0; color: #155724; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-check-circle" style="color: #28a745; font-size: 20px;"></i>
+                Text Berhasil Terdeteksi!
+            </h4>
+            <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <strong style="color: #495057;">Detected Text: </strong>
+                <span style="font-family: 'Courier New', monospace; color: #28a745; font-weight: bold; font-size: 16px;" id="detected-text-display"></span>
             </div>
-            <div class="share-buttons">
-                <button class="share-btn share-facebook" onclick="shareToFacebook()">
+            <div style="display: flex; align-items: center; gap: 15px; font-size: 14px;">
+                <div style="background: white; padding: 8px 15px; border-radius: 20px;">
+                    <strong style="color: #495057;">Confidence: </strong>
+                    <span style="color: #28a745; font-weight: bold;" id="confidence-display"></span>
+                </div>
+                <div style="background: rgba(40, 167, 69, 0.1); padding: 8px 15px; border-radius: 20px; color: #155724;">
+                    <i class="fas fa-robot"></i> AI Processing Complete
+                </div>
+            </div>
+        </div>
+        
+        <!-- Loading Animation -->
+        <div id="text-loader" class="enhanced-loader" style="display: none; text-align: center; margin: 40px 0;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 20px auto; display: flex; align-items: center; justify-content: center; animation: spin 1.5s linear infinite; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);">
+                <i class="fas fa-magic" style="color: white; font-size: 32px;"></i>
+            </div>
+            <p style="color: #667eea; font-size: 18px; font-weight: 600; margin: 0; animation: pulse 2s infinite;">
+                🤖 AI sedang memproses gambar Anda...
+            </p>
+            <div style="margin-top: 15px; display: flex; justify-content: center; gap: 5px;">
+                <div style="width: 10px; height: 10px; background: #667eea; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; animation-delay: -0.32s;"></div>
+                <div style="width: 10px; height: 10px; background: #667eea; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; animation-delay: -0.16s;"></div>
+                <div style="width: 10px; height: 10px; background: #667eea; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both;"></div>
+            </div>
+        </div>
+        
+        <!-- Result Image -->
+        <div style="text-align: center;">
+            <img id="text-result-image" src="#" alt="Hasil Text Swap" style="display: none; max-width: 100%; max-height: 600px; border-radius: 16px; box-shadow: 0 16px 64px rgba(0,0,0,0.2); border: 4px solid white;">
+        </div>
+        
+        <!-- Enhanced Download Button -->
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="#" id="text-download-btn" class="enhanced-download-btn hidden" download="enhanced-text-swapped-image.jpg" 
+               style="display: inline-flex; align-items: center; gap: 12px; padding: 15px 35px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border-radius: 50px; font-weight: 600; text-decoration: none; box-shadow: 0 8px 32px rgba(40, 167, 69, 0.4); transition: all 0.3s ease; font-size: 16px;">
+                <i class="fas fa-download" style="font-size: 18px;"></i>
+                Download Gambar
+            </a>
+        </div>
+
+        <!-- Enhanced Share Section -->
+        <div id="text-share-section" class="share-section hidden" style="margin-top: 35px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 3px dashed #6c757d; border-radius: 20px; padding: 30px;">
+            <div class="share-title" style="font-size: 20px; font-weight: 600; color: #495057; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 12px;">
+                <i class="fas fa-share-alt" style="color: #6c757d; font-size: 24px;"></i>
+                Bagikan Karya AI Anda!
+            </div>
+            <div class="share-buttons" style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <button class="share-btn share-facebook" onclick="shareToFacebook()" style="background: linear-gradient(135deg, #1877f2, #0d5dcc); padding: 12px 20px; border-radius: 30px;">
                     <i class="fab fa-facebook-f"></i> Facebook
                 </button>
-                <button class="share-btn share-twitter" onclick="shareToTwitter()">
+                <button class="share-btn share-twitter" onclick="shareToTwitter()" style="background: linear-gradient(135deg, #1da1f2, #0d8bd9); padding: 12px 20px; border-radius: 30px;">
                     <i class="fab fa-twitter"></i> Twitter
                 </button>
-                <button class="share-btn share-whatsapp" onclick="shareToWhatsApp()">
+                <button class="share-btn share-whatsapp" onclick="shareToWhatsApp()" style="background: linear-gradient(135deg, #25d366, #1aaa55); padding: 12px 20px; border-radius: 30px;">
                     <i class="fab fa-whatsapp"></i> WhatsApp
                 </button>
-                <button class="share-btn share-instagram" onclick="shareToInstagram()">
+                <button class="share-btn share-instagram" onclick="shareToInstagram()" style="background: linear-gradient(135deg, #e4405f, #833ab4); padding: 12px 20px; border-radius: 30px;">
                     <i class="fab fa-instagram"></i> Instagram
                 </button>
-                <button class="share-btn share-copy" onclick="copyImageLink()">
+                <button class="share-btn share-copy" onclick="copyImageLink()" style="background: linear-gradient(135deg, #6c757d, #495057); padding: 12px 20px; border-radius: 30px;">
                     <i class="fas fa-copy"></i> Copy Link
                 </button>
             </div>
@@ -96,8 +204,91 @@
     </div>
 </div>
 
+<!-- Enhanced CSS Animations -->
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+    } 40% {
+        transform: scale(1.0);
+    }
+}
+
+.input-group input:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+    outline: none;
+}
+
+#text-submit-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6);
+}
+
+.enhanced-download-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(40, 167, 69, 0.6);
+}
+
+.share-btn {
+    transition: all 0.3s ease;
+    border: none;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.share-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+
+.upload-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+}
+
+/* Enhanced responsive design */
+@media (max-width: 768px) {
+    .enhanced-text-input-area > div {
+        grid-template-columns: 1fr !important;
+        gap: 20px;
+    }
+    
+    .examples-section > div {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .enhanced-tips-section > div {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .share-buttons {
+        gap: 10px !important;
+    }
+    
+    .share-btn {
+        padding: 10px 15px !important;
+        font-size: 14px !important;
+    }
+}
+</style>
+
 <script>
-// Update script untuk menampilkan info deteksi
+// Enhanced JavaScript untuk Text Swapper
 document.addEventListener("DOMContentLoaded", () => {
     const textSwapForm = document.getElementById("text-swap-form");
 
@@ -114,37 +305,52 @@ document.addEventListener("DOMContentLoaded", () => {
         const detectedTextDisplay = document.getElementById("detected-text-display");
         const confidenceDisplay = document.getElementById("confidence-display");
 
-        // Preview gambar
+        // Enhanced preview dengan animasi
         textImageInput.addEventListener("change", () => {
             if (textImageInput.files && textImageInput.files[0]) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     textPreview.src = e.target.result;
                     textPreview.style.display = "block";
+                    
+                    // Animasi fade in untuk preview
+                    textPreview.style.opacity = "0";
+                    setTimeout(() => {
+                        textPreview.style.transition = "opacity 0.5s ease";
+                        textPreview.style.opacity = "1";
+                    }, 100);
                 };
                 reader.readAsDataURL(textImageInput.files[0]);
             }
         });
 
-        // Submit form dengan info detection
+        // Enhanced form submission dengan feedback yang lebih baik
         textSwapForm.addEventListener("submit", async (e) => {
             e.preventDefault();
+            
+            // Show result area dengan animasi
             textResultArea.classList.remove("hidden");
+            textResultArea.style.opacity = "0";
+            setTimeout(() => {
+                textResultArea.style.transition = "opacity 0.5s ease";
+                textResultArea.style.opacity = "1";
+            }, 100);
+            
+            // Reset state
             textLoader.style.display = "block";
             textResultImage.style.display = "none";
             textDownloadBtn.classList.add("hidden");
             textShareSection.classList.add("hidden");
             detectionInfo.style.display = "none";
+            
+            // Enhanced button loading state
             textSubmitBtn.disabled = true;
-            textSubmitBtn.innerHTML =
-                '<i class="fas fa-spinner fa-spin"></i> AI sedang memproses...';
+            textSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 🤖 AI sedang bekerja keras...';
+            textSubmitBtn.style.background = "linear-gradient(135deg, #6c757d 0%, #495057 100%)";
 
             const formData = new FormData();
             formData.append("image", textImageInput.files[0]);
-            formData.append(
-                "original_text",
-                document.getElementById("original-text").value
-            );
+            formData.append("original_text", document.getElementById("original-text").value);
             formData.append("new_text", document.getElementById("new-text").value);
 
             try {
@@ -154,47 +360,103 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 const data = await response.json();
 
-                if (response.ok) {
-                    textResultImage.src = data.result_image;
-                    textResultImage.style.display = "block";
-                    textDownloadBtn.href = data.result_image;
-                    textDownloadBtn.classList.remove("hidden");
-                    textShareSection.classList.remove("hidden");
+                if (response.ok && data.success) {
+                    // Hide loader dengan delay untuk efek yang smooth
+                    setTimeout(() => {
+                        textLoader.style.display = "none";
+                        
+                        // Show result image dengan animasi
+                        textResultImage.src = data.result_image;
+                        textResultImage.style.display = "block";
+                        textResultImage.style.opacity = "0";
+                        setTimeout(() => {
+                            textResultImage.style.transition = "opacity 0.8s ease";
+                            textResultImage.style.opacity = "1";
+                        }, 100);
+                        
+                        // Show download dan share dengan delay
+                        setTimeout(() => {
+                            textDownloadBtn.href = data.result_image;
+                            textDownloadBtn.classList.remove("hidden");
+                            textShareSection.classList.remove("hidden");
+                            
+                            // Tampilkan detection info dengan animasi
+                            if (data.detected_text && data.confidence) {
+                                detectedTextDisplay.textContent = data.detected_text;
+                                confidenceDisplay.textContent = data.confidence;
+                                detectionInfo.style.display = "block";
+                                detectionInfo.style.opacity = "0";
+                                setTimeout(() => {
+                                    detectionInfo.style.transition = "opacity 0.5s ease";
+                                    detectionInfo.style.opacity = "1";
+                                }, 200);
+                            }
+                        }, 500);
+                    }, 1000);
                     
-                    // Tampilkan info deteksi jika ada
-                    if (data.detected_text && data.confidence) {
-                        detectedTextDisplay.textContent = data.detected_text;
-                        confidenceDisplay.textContent = data.confidence;
-                        detectionInfo.style.display = "block";
-                    }
+                    // Success notification
+                    setTimeout(() => {
+                        Swal.fire({
+                            icon: "success",
+                            title: "✨ Transformasi Berhasil!",
+                            text: "Text berhasil diganti dengan AI. Lihat hasilnya di bawah!",
+                            confirmButtonColor: "#28a745",
+                            confirmButtonText: "Mantap!",
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    }, 1200);
+                    
                 } else {
+                    textLoader.style.display = "none";
                     textShareSection.classList.add("hidden");
                     detectionInfo.style.display = "none";
+                    
                     Swal.fire({
                         icon: "error",
-                        title: "Oops... Terjadi Kesalahan",
-                        text: data.error,
+                        title: "Oops... Ada Masalah",
+                        text: data.error || "Terjadi kesalahan saat memproses gambar",
                         confirmButtonColor: "#d33",
-                        confirmButtonText: "Mengerti",
+                        confirmButtonText: "Coba Lagi",
+                        footer: '<b>Tips:</b> Pastikan text di gambar jelas dan mudah dibaca'
                     });
                 }
             } catch (error) {
+                textLoader.style.display = "none";
                 textShareSection.classList.add("hidden");
                 detectionInfo.style.display = "none";
+                
                 Swal.fire({
                     icon: "error",
-                    title: "Koneksi Gagal",
-                    text: "Tidak dapat terhubung ke server.",
+                    title: "Koneksi Bermasalah",
+                    text: "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.",
                     confirmButtonColor: "#d33",
                     confirmButtonText: "Mengerti",
                 });
                 console.error("Fetch error:", error);
             } finally {
-                textLoader.style.display = "none";
+                // Reset button
                 textSubmitBtn.disabled = false;
-                textSubmitBtn.innerHTML =
-                    '<i class="fas fa-magic"></i> Ganti Text dengan AI!';
+                textSubmitBtn.innerHTML = '<i class="fas fa-magic"></i> Transform Text dengan AI!';
+                textSubmitBtn.style.background = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
             }
+        });
+
+        // Enhanced input validation
+        const originalTextInput = document.getElementById("original-text");
+        const newTextInput = document.getElementById("new-text");
+        
+        [originalTextInput, newTextInput].forEach(input => {
+            input.addEventListener("input", (e) => {
+                const value = e.target.value.trim();
+                if (value.length > 0) {
+                    e.target.style.borderColor = e.target === originalTextInput ? "#27ae60" : "#e74c3c";
+                    e.target.style.boxShadow = `0 0 10px ${e.target === originalTextInput ? "rgba(39, 174, 96, 0.3)" : "rgba(231, 76, 60, 0.3)"}`;
+                } else {
+                    e.target.style.borderColor = "#ddd";
+                    e.target.style.boxShadow = "none";
+                }
+            });
         });
     }
 });
