@@ -15,6 +15,8 @@ import uuid
 import easyocr
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
 import io
+import re
+import unicodedata
 
 # === Impor untuk Fitur Replicate API ===
 from sklearn.cluster import KMeans
@@ -29,6 +31,14 @@ from skimage import morphology, segmentation
 from scipy.spatial.distance import euclidean
 import colorsys
 from collections import Counter
+# === NEW: Fuzzy string matching untuk robust text detection ===
+try:
+    from fuzzywuzzy import fuzz, process
+    print("✅ FuzzyWuzzy loaded successfully")
+except ImportError:
+    print("⚠️  FuzzyWuzzy not available. Install with: pip install fuzzywuzzy python-Levenshtein")
+    fuzz = None
+    process = None
 # ================================================
 
 load_dotenv()
@@ -99,70 +109,187 @@ try:
 except Exception as e:
     print(f"!!! PERINGATAN: GAGAL MEMUAT OCR READER: {e}")
 
-# ===== ENHANCED TEXT PROCESSING FUNCTIONS =====
+# ===== ENHANCED TEXT PROCESSING FUNCTIONS - QUICK FIX =====
 
-def detect_text_advanced(image_np, target_text):
+def detect_text_advanced_quick_fix(image_np, target_text):
     """
-    Deteksi text yang lebih advanced dengan confidence scoring yang lebih baik
+    Quick fix untuk text detection yang lebih robust tanpa library tambahan
     """
     try:
-        results = ocr_reader.readtext(image_np, detail=1)
+        # Normalisasi target text
+        target_normalized = re.sub(r'\s+', ' ', target_text.strip().lower())
+        
+        print(f"🔍 Looking for: '{target_text}' (normalized: '{target_normalized}')")
+        
+        # Multiple preprocessing approaches
+        preprocessing_methods = []
+        
+        # 1. Original image
+        preprocessing_methods.append(("original", image_np))
+        
+        # 2. Grayscale
+        gray = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
+        preprocessing_methods.append(("grayscale", gray))
+        
+        # 3. Enhanced contrast
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        enhanced = clahe.apply(gray)
+        preprocessing_methods.append(("enhanced_contrast", enhanced))
+        
+        # 4. Threshold
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        preprocessing_methods.append(("threshold", thresh))
+        
+        # 5. Scaling up untuk text kecil
+        h, w = image_np.shape[:2]
+        scaled_up = cv2.resize(image_np, (w*2, h*2), interpolation=cv2.INTER_CUBIC)
+        preprocessing_methods.append(("scaled_2x", scaled_up))
         
         best_match = None
         best_score = 0
+        all_detections = []
         
-        for (bbox, text, confidence) in results:
-            if confidence < 0.3:  # Skip low confidence detections
+        # Test setiap preprocessing method
+        for method_name, processed_img in preprocessing_methods:
+            try:
+                print(f"   Testing {method_name}...")
+                results = ocr_reader.readtext(processed_img, detail=1)
+                
+                for (bbox, detected_text, confidence) in results:
+                    if confidence < 0.1:  # Threshold sangat rendah
+                        continue
+                    
+                    # Multiple similarity checks
+                    detected_normalized = re.sub(r'\s+', ' ', detected_text.strip().lower())
+                    
+                    # Scoring system
+                    scores = []
+                    
+                    # 1. Exact match
+                    if target_normalized == detected_normalized:
+                        scores.append(1.0)
+                        print(f"      ✅ EXACT MATCH: '{detected_text}'")
+                    
+                    # 2. Contains match (kedua arah)
+                    if target_normalized in detected_normalized:
+                        scores.append(0.9)
+                        print(f"      🎯 CONTAINS (target in detected): '{detected_text}'")
+                    elif detected_normalized in target_normalized:
+                        scores.append(0.85)
+                        print(f"      🎯 CONTAINS (detected in target): '{detected_text}'")
+                    
+                    # 3. Word matching
+                    target_words = set(target_normalized.split())
+                    detected_words = set(detected_normalized.split())
+                    common_words = target_words.intersection(detected_words)
+                    
+                    if len(target_words) > 0 and len(common_words) > 0:
+                        word_score = len(common_words) / len(target_words)
+                        if word_score > 0.5:  # Minimal 50% kata sama
+                            scores.append(word_score * 0.8)
+                            print(f"      📝 WORD MATCH ({word_score:.2f}): '{detected_text}'")
+                    
+                    # 4. Character overlap
+                    target_chars = set(target_normalized.replace(' ', ''))
+                    detected_chars = set(detected_normalized.replace(' ', ''))
+                    if len(target_chars) > 0:
+                        char_overlap = len(target_chars.intersection(detected_chars)) / len(target_chars)
+                        if char_overlap > 0.6:  # Minimal 60% karakter sama
+                            scores.append(char_overlap * 0.6)
+                            print(f"      🔤 CHAR MATCH ({char_overlap:.2f}): '{detected_text}'")
+                    
+                    # 5. Simple edit distance (approximate)
+                    def simple_similarity(s1, s2):
+                        if len(s1) == 0 or len(s2) == 0:
+                            return 0
+                        matches = sum(1 for a, b in zip(s1, s2) if a == b)
+                        return matches / max(len(s1), len(s2))
+                    
+                    edit_sim = simple_similarity(target_normalized, detected_normalized)
+                    if edit_sim > 0.6:
+                        scores.append(edit_sim * 0.5)
+                        print(f"      ✏️ EDIT SIM ({edit_sim:.2f}): '{detected_text}'")
+                    
+                    # 6. FuzzyWuzzy matching (jika tersedia)
+                    if fuzz:
+                        fuzzy_ratio = fuzz.ratio(target_normalized, detected_normalized) / 100
+                        if fuzzy_ratio > 0.6:
+                            scores.append(fuzzy_ratio * 0.7)
+                            print(f"      🔄 FUZZY MATCH ({fuzzy_ratio:.2f}): '{detected_text}'")
+                    
+                    # Calculate final score
+                    if scores:
+                        max_similarity = max(scores)
+                        final_score = max_similarity * confidence
+                        
+                        detection_info = {
+                            'bbox': bbox,
+                            'text': detected_text,
+                            'confidence': confidence,
+                            'similarity': max_similarity,
+                            'final_score': final_score,
+                            'method': method_name
+                        }
+                        
+                        all_detections.append(detection_info)
+                        
+                        print(f"      📊 Final score: {final_score:.3f} (sim: {max_similarity:.3f}, conf: {confidence:.3f})")
+                        
+                        if final_score > best_score:
+                            best_score = final_score
+                            best_match = detection_info
+                
+            except Exception as e:
+                print(f"      ❌ Error with {method_name}: {e}")
                 continue
-            
-            # Multiple scoring methods
-            scores = []
-            
-            # 1. Exact match (highest priority)
-            if text.lower().strip() == target_text.lower().strip():
-                scores.append(1.0)
-            
-            # 2. Contains match
-            if target_text.lower() in text.lower() or text.lower() in target_text.lower():
-                scores.append(0.8)
-            
-            # 3. Word-by-word match
-            target_words = target_text.lower().split()
-            text_words = text.lower().split()
-            common_words = set(target_words) & set(text_words)
-            if common_words and len(target_words) > 0:
-                word_score = len(common_words) / max(len(target_words), len(text_words))
-                scores.append(word_score * 0.6)
-            
-            # 4. Character similarity (simple Levenshtein-like)
-            char_similarity = calculate_similarity(target_text.lower(), text.lower())
-            scores.append(char_similarity * 0.4)
-            
-            final_score = max(scores) * confidence
-            
-            if final_score > best_score:
-                best_score = final_score
-                best_match = (bbox, text, confidence, final_score)
         
-        return best_match
+        # Jika tidak ada hasil bagus, coba lagi dengan threshold lebih rendah
+        if not best_match or best_score < 0.3:
+            print(f"   🔄 Retrying with very low threshold...")
+            
+            # Ambil semua deteksi yang memiliki kata yang sama
+            for detection in all_detections:
+                detected_words = set(detection['text'].lower().split())
+                target_words = set(target_text.lower().split())
+                
+                # Jika ada word yang sama, beri bonus
+                common = detected_words.intersection(target_words)
+                if common:
+                    bonus_score = len(common) / max(len(target_words), 1) * detection['confidence']
+                    if bonus_score > best_score:
+                        best_score = bonus_score
+                        best_match = detection
+                        print(f"      🎁 BONUS MATCH: '{detection['text']}' | Common words: {common}")
         
+        # Jika masih tidak ada, coba fuzzy search pada semua hasil
+        if not best_match and all_detections and fuzz:
+            print(f"   🔄 Trying fuzzy search on all detections...")
+            all_texts = [d['text'] for d in all_detections]
+            fuzzy_result = process.extractOne(target_text, all_texts, scorer=fuzz.token_sort_ratio)
+            
+            if fuzzy_result and fuzzy_result[1] >= 60:  # 60% similarity threshold
+                matched_text = fuzzy_result[0]
+                matched_detection = next(d for d in all_detections if d['text'] == matched_text)
+                matched_detection['similarity'] = fuzzy_result[1] / 100
+                matched_detection['final_score'] = (fuzzy_result[1] / 100) * matched_detection['confidence']
+                best_match = matched_detection
+                print(f"   ✅ Fuzzy match found: '{matched_text}' with {fuzzy_result[1]}% similarity")
+        
+        # Print summary
+        if best_match:
+            print(f"✅ FOUND: '{best_match['text']}' | Score: {best_score:.3f} | Method: {best_match['method']}")
+            return (best_match['bbox'], best_match['text'], best_match['confidence'], best_match['final_score'])
+        else:
+            print(f"❌ NOT FOUND: '{target_text}'")
+            print("🔍 All detected texts:")
+            unique_texts = list(set([d['text'] for d in all_detections]))[:15]
+            for i, text in enumerate(unique_texts):
+                print(f"   {i+1:2d}. '{text}'")
+            return None
+            
     except Exception as e:
-        print(f"Error in advanced text detection: {e}")
+        print(f"❌ Error in text detection: {e}")
         return None
-
-def calculate_similarity(s1, s2):
-    """Simple similarity calculation"""
-    if len(s1) == 0 or len(s2) == 0:
-        return 0
-    
-    # Simple character-based similarity
-    common_chars = set(s1) & set(s2)
-    all_chars = set(s1) | set(s2)
-    
-    if len(all_chars) == 0:
-        return 0
-    
-    return len(common_chars) / len(all_chars)
 
 def extract_text_mask(image_np, bbox, padding=3):
     """
@@ -555,24 +682,52 @@ def render_text_with_properties(image_pil, text, bbox, text_color, font_properti
         print(f"Error rendering text: {e}")
         return image_pil
 
-def process_text_swap_advanced(image_pil, original_text, new_text):
+def process_text_swap_advanced_quick_fix(image_pil, original_text, new_text):
     """
-    Proses text swap yang lebih advanced dan natural
+    Quick fix untuk text swap dengan detection yang lebih robust
     """
     try:
+        print("🚀 Starting QUICK FIX text swap process...")
+        
         # Convert PIL to numpy for OCR
         image_np = np.array(image_pil)
         image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
         
-        # 1. Advanced text detection
+        # 1. Quick fix text detection
         print(f"Detecting text: '{original_text}'...")
-        detection_result = detect_text_advanced(image_bgr, original_text)
+        detection_result = detect_text_advanced_quick_fix(image_bgr, original_text)
         
         if detection_result is None:
-            raise ValueError(f"Text '{original_text}' not found in the image")
+            # Coba dengan part dari text
+            words = original_text.split()
+            if len(words) > 1:
+                print("🔄 Trying with individual words...")
+                for word in words:
+                    if len(word) > 2:  # Skip kata pendek
+                        print(f"   Trying word: '{word}'")
+                        detection_result = detect_text_advanced_quick_fix(image_bgr, word)
+                        if detection_result:
+                            print(f"   ✅ Found using word: '{word}'")
+                            break
+        
+        if detection_result is None:
+            available_texts = []
+            try:
+                results = ocr_reader.readtext(image_bgr, detail=1)
+                available_texts = [text for (_, text, conf) in results if conf > 0.1]
+            except:
+                pass
+            
+            suggestion_msg = f"Text '{original_text}' tidak ditemukan. "
+            if available_texts:
+                suggestion_msg += f"Text yang terdeteksi: {', '.join(available_texts[:10])}"
+            else:
+                suggestion_msg += "Pastikan gambar memiliki kualitas yang baik dan text terlihat jelas."
+            
+            raise ValueError(suggestion_msg)
         
         bbox, detected_text, confidence, score = detection_result
-        print(f"Detected: '{detected_text}' with confidence {confidence:.2f} (score: {score:.2f})")
+        print(f"✅ Text detected: '{detected_text}' with confidence {confidence:.2f} (score: {score:.2f})")
         
         # 2. Create text mask
         print("Creating text mask...")
@@ -612,7 +767,7 @@ def process_text_swap_advanced(image_pil, original_text, new_text):
         return final_image, detected_text, confidence
         
     except Exception as e:
-        print(f"Error in advanced text swap: {e}")
+        print(f"❌ Error in quick fix text swap: {e}")
         raise e
 
 def process_image(file_storage):
@@ -717,7 +872,7 @@ def google_auth():
     login_user(user)
     return redirect(url_for('face_swapper_app'))
 
-# --- 7. ENHANCED Text Swap Process ---
+# --- 7. ENHANCED Text Swap Process - QUICK FIX VERSION ---
 @app.route('/text-swap-process', methods=['POST'])
 @login_required
 def text_swap_process():
@@ -741,8 +896,8 @@ def text_swap_process():
         
         print(f"Processing text swap: '{original_text}' -> '{new_text}'")
         
-        # Use the advanced text swap function
-        result_image, detected_text, confidence = process_text_swap_advanced(
+        # Use the QUICK FIX text swap function
+        result_image, detected_text, confidence = process_text_swap_advanced_quick_fix(
             image, original_text, new_text
         )
         
@@ -774,14 +929,57 @@ def text_swap_process():
             'result_image': result_base64,
             'detected_text': detected_text,
             'confidence': f"{confidence:.2f}",
-            'success': True
+            'success': True,
+            'message': f"✅ Text '{original_text}' berhasil diganti dengan '{new_text}'"
         })
         
     except Exception as e:
-        print(f"Error dalam text swap: {e}")
+        error_msg = str(e)
+        print(f"Error dalam text swap: {error_msg}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': f'Terjadi kesalahan saat memproses gambar: {str(e)}'}), 500
+        
+        # Enhanced error suggestions
+        suggestions = []
+        debug_info = ""
+        
+        if "tidak ditemukan" in error_msg.lower() or "not found" in error_msg.lower():
+            suggestions = [
+                "🔍 Pastikan text yang dicari benar-benar ada dan terlihat jelas di gambar",
+                "🔍 Coba gunakan kata kunci yang lebih spesifik atau unik",
+                "🔤 Coba variasi kapitalisasi: 'Jepang', 'JEPANG', atau 'jepang'",
+                "✂️ Coba gunakan bagian dari text (misal: 'Jepang' dari 'di Jepang')",
+                "🖼️ Pastikan gambar memiliki kualitas HD dan text tidak terpotong"
+            ]
+            
+            # Extract available texts for debugging
+            if "Text yang terdeteksi:" in error_msg:
+                debug_info = "💡 Text yang terdeteksi di gambar: lihat pesan error di atas"
+            
+        elif "mask" in error_msg.lower():
+            suggestions = [
+                "🎯 Text berhasil ditemukan tapi gagal membuat mask",
+                "🔄 Coba dengan gambar yang berbeda atau crop area text saja",
+                "🔍 Pastikan text tidak terlalu kecil atau terdistorsi"
+            ]
+        
+        else:
+            suggestions = [
+                "🔧 Terjadi kesalahan teknis dalam pemrosesan",
+                "📱 Coba refresh halaman dan upload ulang",
+                "🖼️ Pastikan format gambar adalah JPG/PNG yang valid"
+            ]
+        
+        error_response = {
+            'error': error_msg,
+            'suggestions': suggestions,
+            'debug_tip': "Untuk hasil terbaik, gunakan gambar HD dengan text yang kontras dan jelas"
+        }
+        
+        if debug_info:
+            error_response['debug_info'] = debug_info
+        
+        return jsonify(error_response), 500
 
 # --- 8. Rute API untuk Face Swap ---
 @app.route('/swap', methods=['POST'])
@@ -881,8 +1079,63 @@ def delete_swap(swap_id):
         db.session.rollback()
     return redirect(url_for('gallery'))
 
-# --- 10. Menjalankan Aplikasi & Membuat Database ---
+# --- 10. Testing Function (Opsional untuk debugging) ---
+def test_text_detection_manual(image_path, target_text):
+    """
+    Fungsi untuk testing manual dari command line
+    """
+    print("="*60)
+    print(f"TESTING TEXT DETECTION")
+    print(f"Image: {image_path}")
+    print(f"Target: '{target_text}'")
+    print("="*60)
+    
+    # Load image
+    image_bgr = cv2.imread(image_path)
+    if image_bgr is None:
+        print(f"❌ Cannot load image: {image_path}")
+        return
+    
+    # Test detection
+    result = detect_text_advanced_quick_fix(image_bgr, target_text)
+    
+    if result:
+        bbox, detected_text, confidence, score = result
+        print(f"\n🎉 SUCCESS!")
+        print(f"   Detected: '{detected_text}'")
+        print(f"   Confidence: {confidence:.3f}")
+        print(f"   Score: {score:.3f}")
+        
+        # Visualize result (optional)
+        try:
+            # Draw bounding box
+            points = np.array(bbox, dtype=np.int32)
+            cv2.polylines(image_bgr, [points], True, (0, 255, 0), 2)
+            
+            # Add text label
+            x, y, w, h = cv2.boundingRect(points)
+            cv2.putText(image_bgr, f"Found: {detected_text}", (x, y-10), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            
+            # Save result
+            output_path = f"debug_{os.path.basename(image_path)}"
+            cv2.imwrite(output_path, image_bgr)
+            print(f"   Debug image saved: {output_path}")
+            
+        except Exception as e:
+            print(f"   (Visualization failed: {e})")
+        
+    else:
+        print(f"\n❌ FAILED to detect '{target_text}'")
+    
+    print("="*60)
+
+# --- 11. Menjalankan Aplikasi & Membuat Database ---
 if __name__ == '__main__':
+    # Uncomment untuk testing manual
+    # test_text_detection_manual("path/to/test/image.jpg", "Jepang")
+    
+    # Jalankan app
     with app.app_context():
         db.create_all()
     app.run(host='0.0.0.0', port=5000, debug=True)

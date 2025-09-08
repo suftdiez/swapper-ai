@@ -19,5 +19,13 @@ python-dotenv==1.0.0
 scipy==1.11.4
 scikit-image==0.22.0
 
+# NEW: Fuzzy string matching untuk robust text detection
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.21.1
+
 # Optional performance enhancements (install manually if needed)
 # numba==0.58.1
+
+# Alternative OCR libraries (optional, untuk future enhancement)
+# paddlepaddle==2.5.1
+# paddleocr==2.7.0.3
