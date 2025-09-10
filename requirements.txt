@@ -8,24 +8,31 @@ flask-login==0.6.3
 flask-bcrypt==1.0.1
 flask-sqlalchemy==3.0.5
 authlib==1.2.1
-easyocr==1.7.0
-pillow==10.1.0
 requests==2.31.0
-replicate==0.15.4
-scikit-learn==1.3.2
 python-dotenv==1.0.0
 
-# Enhanced text processing dependencies
+# Enhanced OCR and Text Processing
+easyocr==1.7.0
+pillow==10.1.0
+scikit-learn==1.3.2
 scipy==1.11.4
 scikit-image==0.22.0
 
-# NEW: Fuzzy string matching untuk robust text detection
+# FIXED: Fuzzy string matching untuk robust text detection
 fuzzywuzzy==0.18.0
 python-Levenshtein==0.21.1
 
-# Optional performance enhancements (install manually if needed)
+# Replicate API untuk face enhancement
+replicate==0.15.4
+
+# Production optimizations
+# Uncomment jika ingin performance boost (opsional)
 # numba==0.58.1
 
-# Alternative OCR libraries (optional, untuk future enhancement)
+# Alternative OCR libraries (opsional, untuk future enhancement)
 # paddlepaddle==2.5.1
 # paddleocr==2.7.0.3
+
+# Development dan Testing tools (opsional)
+# pytest==7.4.0
+# pytest-flask==1.2.1
