@@ -175,96 +175,99 @@ def preprocess_image_for_ocr(image, method="default"):
         print(f"Error in preprocessing method {method}: {e}")
         return gray if len(image.shape) == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-# =========================================================================
-# === KODE YANG DIPERBAIKI: enhanced_text_detection_system ===
-# =========================================================================
+
 def enhanced_text_detection_system(image, target_text):
     """
-    Sistem deteksi teks yang disempurnakan dengan kemampuan mendeteksi frasa (multi-kata).
+    Sistem deteksi teks yang disempurnakan dengan prioritas pencocokan frasa yang tepat.
     """
     if ocr_reader is None:
         raise RuntimeError("OCR Reader tidak tersedia. Restart aplikasi atau install EasyOCR.")
-    
+
     print(f"🔍 Enhanced Detection for: '{target_text}'")
 
-    target_normalized = re.sub(r'\s+', ' ', target_text.strip().lower())
+    # --- Langkah 1: Normalisasi Teks Target & OCR dengan Lebih Baik ---
+    def normalize_text(text):
+        # Hapus semua tanda baca, ubah ke huruf kecil, dan rapikan spasi
+        text = re.sub(r'[^\w\s]', '', text)
+        text = text.lower().strip()
+        return re.sub(r'\s+', ' ', text)
+
+    target_normalized = normalize_text(target_text)
     target_words = target_normalized.split()
     num_target_words = len(target_words)
 
     if num_target_words == 0:
         return None
 
-    # Menggunakan metode preprocessing dasar untuk pemindaian awal
     try:
+        # Gunakan preprocessing untuk meningkatkan kualitas deteksi
         processed_image = preprocess_image_for_ocr(image, "enhanced_contrast")
-        # paragraph=False penting untuk mendapatkan deteksi per kata
+        # paragraph=False SANGAT PENTING untuk mendapatkan deteksi per kata
         all_detected_words = ocr_reader.readtext(processed_image, detail=1, paragraph=False)
     except Exception as e:
-        print(f"❌ Critical error during initial OCR read: {e}")
+        print(f"❌ Critical error during OCR read: {e}")
         return None
 
     if not all_detected_words:
         print("   ⚠️ No text detected in the image.")
         return None
 
-    print(f"   Total words detected: {len(all_detected_words)}")
-    
-    # --- LOGIKA BARU UNTUK PENCARIAN FRASA ---
-    best_match_info = None
-    best_match_score = 0.0
-
-    # Iterasi melalui semua kemungkinan urutan kata yang terdeteksi
+    # --- Langkah 2: Cari Kecocokan Frasa yang Tepat (Prioritas Utama) ---
+    print(f"    Mencari frasa persis: '{target_normalized}'")
     for i in range(len(all_detected_words) - num_target_words + 1):
-        
-        # Ambil potongan kata-kata yang jumlahnya sama dengan jumlah kata target
+        # Ambil kandidat frasa dari hasil deteksi
         phrase_candidate_info = all_detected_words[i : i + num_target_words]
-        
-        # Gabungkan teks dari potongan kata
-        detected_phrase_text = ' '.join([info[1] for info in phrase_candidate_info])
-        detected_phrase_normalized = re.sub(r'\s+', ' ', detected_phrase_text.strip().lower())
 
-        # Gunakan fuzzy matching untuk membandingkan frasa
-        # token_sort_ratio baik untuk perbandingan urutan kata yang mungkin sedikit berbeda
-        similarity_score = fuzz.token_sort_ratio(target_normalized, detected_phrase_normalized) / 100.0
-        
-        if similarity_score > best_match_score:
-            best_match_score = similarity_score
-            
-            # Gabungkan bounding box dari semua kata dalam frasa
+        # Normalisasi dan gabungkan kata-kata yang terdeteksi
+        detected_words_normalized = [normalize_text(info[1]) for info in phrase_candidate_info]
+        detected_phrase_normalized = ' '.join(detected_words_normalized)
+
+        # Bandingkan langsung — ini adalah cara paling andal
+        if detected_phrase_normalized == target_normalized:
+            print(f"   ✅ BERHASIL: Ditemukan frasa yang cocok persis di indeks {i}")
+
+            # Gabungkan bounding box dari kata pertama dan terakhir
             first_word_bbox = phrase_candidate_info[0][0]
             last_word_bbox = phrase_candidate_info[-1][0]
-            
-            # Dapatkan titik sudut gabungan: [top-left, top-right, bottom-right, bottom-left]
-            combined_bbox = [
-                first_word_bbox[0], # Top-left dari kata pertama
-                last_word_bbox[1],  # Top-right dari kata terakhir
-                last_word_bbox[2],  # Bottom-right dari kata terakhir
-                first_word_bbox[3]  # Bottom-left dari kata pertama
-            ]
-            
-            # Hitung kepercayaan rata-rata
+            combined_bbox = [first_word_bbox[0], last_word_bbox[1], last_word_bbox[2], first_word_bbox[3]]
+
+            original_detected_text = ' '.join([info[1] for info in phrase_candidate_info])
             avg_confidence = np.mean([info[2] for info in phrase_candidate_info])
-            
-            best_match_info = (combined_bbox, detected_phrase_text, avg_confidence, similarity_score)
 
-    # Hanya terima kecocokan dengan skor yang cukup tinggi (misal > 75%)
-    if best_match_info and best_match_score >= 0.75:
-        print(f"✅ FOUND PHRASE: '{best_match_info[1]}' with score {best_match_score:.2f}")
+            # Kembalikan hasil dengan skor 1.0 (kecocokan sempurna)
+            return (combined_bbox, original_detected_text, avg_confidence, 1.0)
+
+    # --- Langkah 3: Rencana Cadangan - Fuzzy Matching (Jika tidak ada kecocokan tepat) ---
+    print("   ⚠️ Frasa persis tidak ditemukan. Mencoba pencocokan fuzzy...")
+    best_match_info = None
+    # Kita set ambang batas minimal untuk menghindari hasil yang aneh
+    best_score_threshold = 0.80 
+
+    for i in range(len(all_detected_words) - num_target_words + 1):
+        phrase_candidate_info = all_detected_words[i : i + num_target_words]
+        detected_phrase_text = ' '.join([info[1] for info in phrase_candidate_info])
+        
+        # Gunakan fuzzy matching sebagai alternatif
+        similarity_score = fuzz.token_set_ratio(target_normalized, normalize_text(detected_phrase_text)) / 100.0
+
+        if similarity_score > best_score_threshold:
+            best_score_threshold = similarity_score
+            first_word_bbox = phrase_candidate_info[0][0]
+            last_word_bbox = phrase_candidate_info[-1][0]
+            combined_bbox = [first_word_bbox[0], last_word_bbox[1], last_word_bbox[2], first_word_bbox[3]]
+            original_detected_text = ' '.join([info[1] for info in phrase_candidate_info])
+            avg_confidence = np.mean([info[2] for info in phrase_candidate_info])
+            best_match_info = (combined_bbox, original_detected_text, avg_confidence, best_score_threshold)
+
+    if best_match_info:
+        print(f"   ✅ BERHASIL (FUZZY): Ditemukan '{best_match_info[1]}' dengan skor {best_match_info[3]:.2f}")
         return best_match_info
-    
-    # --- FALLBACK: Jika pencarian frasa gagal, coba cari kata individual (logika lama) ---
-    print("   🔄 Phrase not found, fallback to individual word search...")
-    for (bbox, text, conf) in all_detected_words:
-        if fuzz.ratio(target_normalized, text.lower()) > 85: # Threshold lebih tinggi untuk kata tunggal
-             print(f"✅ FOUND WORD (fallback): '{text}'")
-             return (bbox, text, conf, fuzz.ratio(target_normalized, text.lower())/100.0)
 
-
-    print(f"❌ NOT FOUND: '{target_text}'")
-    detected_texts = [f"'{item[1]}'" for item in all_detected_words]
-    print(f"   Detected texts: {', '.join(detected_texts[:10])}...")
+    # Jika semua cara gagal
+    print(f"❌ GAGAL TOTAL: Tidak dapat menemukan '{target_text}'")
+    detected_texts_for_debug = [f"'{item[1]}'" for item in all_detected_words]
+    print(f"   Teks yang terdeteksi oleh OCR: {', '.join(detected_texts_for_debug[:15])}...")
     return None
-# =========================================================================
 
 def extract_text_region_mask(image, bbox, padding=5):
     """
