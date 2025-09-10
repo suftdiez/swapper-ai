@@ -175,99 +175,230 @@ def preprocess_image_for_ocr(image, method="default"):
         print(f"Error in preprocessing method {method}: {e}")
         return gray if len(image.shape) == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-
 def enhanced_text_detection_system(image, target_text):
     """
-    Sistem deteksi teks yang disempurnakan dengan prioritas pencocokan frasa yang tepat.
+    Enhanced text detection system dengan multiple approaches dan error handling
     """
     if ocr_reader is None:
         raise RuntimeError("OCR Reader tidak tersedia. Restart aplikasi atau install EasyOCR.")
-
+    
     print(f"🔍 Enhanced Detection for: '{target_text}'")
-
-    # --- Langkah 1: Normalisasi Teks Target & OCR dengan Lebih Baik ---
-    def normalize_text(text):
-        # Hapus semua tanda baca, ubah ke huruf kecil, dan rapikan spasi
-        text = re.sub(r'[^\w\s]', '', text)
-        text = text.lower().strip()
-        return re.sub(r'\s+', ' ', text)
-
-    target_normalized = normalize_text(target_text)
-    target_words = target_normalized.split()
-    num_target_words = len(target_words)
-
-    if num_target_words == 0:
-        return None
-
+    
     try:
-        # Gunakan preprocessing untuk meningkatkan kualitas deteksi
-        processed_image = preprocess_image_for_ocr(image, "enhanced_contrast")
-        # paragraph=False SANGAT PENTING untuk mendapatkan deteksi per kata
-        all_detected_words = ocr_reader.readtext(processed_image, detail=1, paragraph=False)
-    except Exception as e:
-        print(f"❌ Critical error during OCR read: {e}")
-        return None
-
-    if not all_detected_words:
-        print("   ⚠️ No text detected in the image.")
-        return None
-
-    # --- Langkah 2: Cari Kecocokan Frasa yang Tepat (Prioritas Utama) ---
-    print(f"    Mencari frasa persis: '{target_normalized}'")
-    for i in range(len(all_detected_words) - num_target_words + 1):
-        # Ambil kandidat frasa dari hasil deteksi
-        phrase_candidate_info = all_detected_words[i : i + num_target_words]
-
-        # Normalisasi dan gabungkan kata-kata yang terdeteksi
-        detected_words_normalized = [normalize_text(info[1]) for info in phrase_candidate_info]
-        detected_phrase_normalized = ' '.join(detected_words_normalized)
-
-        # Bandingkan langsung — ini adalah cara paling andal
-        if detected_phrase_normalized == target_normalized:
-            print(f"   ✅ BERHASIL: Ditemukan frasa yang cocok persis di indeks {i}")
-
-            # Gabungkan bounding box dari kata pertama dan terakhir
-            first_word_bbox = phrase_candidate_info[0][0]
-            last_word_bbox = phrase_candidate_info[-1][0]
-            combined_bbox = [first_word_bbox[0], last_word_bbox[1], last_word_bbox[2], first_word_bbox[3]]
-
-            original_detected_text = ' '.join([info[1] for info in phrase_candidate_info])
-            avg_confidence = np.mean([info[2] for info in phrase_candidate_info])
-
-            # Kembalikan hasil dengan skor 1.0 (kecocokan sempurna)
-            return (combined_bbox, original_detected_text, avg_confidence, 1.0)
-
-    # --- Langkah 3: Rencana Cadangan - Fuzzy Matching (Jika tidak ada kecocokan tepat) ---
-    print("   ⚠️ Frasa persis tidak ditemukan. Mencoba pencocokan fuzzy...")
-    best_match_info = None
-    # Kita set ambang batas minimal untuk menghindari hasil yang aneh
-    best_score_threshold = 0.80 
-
-    for i in range(len(all_detected_words) - num_target_words + 1):
-        phrase_candidate_info = all_detected_words[i : i + num_target_words]
-        detected_phrase_text = ' '.join([info[1] for info in phrase_candidate_info])
+        # Normalize target text
+        target_normalized = re.sub(r'\s+', ' ', target_text.strip().lower())
+        target_words = set(target_normalized.split())
         
-        # Gunakan fuzzy matching sebagai alternatif
-        similarity_score = fuzz.token_set_ratio(target_normalized, normalize_text(detected_phrase_text)) / 100.0
-
-        if similarity_score > best_score_threshold:
-            best_score_threshold = similarity_score
-            first_word_bbox = phrase_candidate_info[0][0]
-            last_word_bbox = phrase_candidate_info[-1][0]
-            combined_bbox = [first_word_bbox[0], last_word_bbox[1], last_word_bbox[2], first_word_bbox[3]]
-            original_detected_text = ' '.join([info[1] for info in phrase_candidate_info])
-            avg_confidence = np.mean([info[2] for info in phrase_candidate_info])
-            best_match_info = (combined_bbox, original_detected_text, avg_confidence, best_score_threshold)
-
-    if best_match_info:
-        print(f"   ✅ BERHASIL (FUZZY): Ditemukan '{best_match_info[1]}' dengan skor {best_match_info[3]:.2f}")
-        return best_match_info
-
-    # Jika semua cara gagal
-    print(f"❌ GAGAL TOTAL: Tidak dapat menemukan '{target_text}'")
-    detected_texts_for_debug = [f"'{item[1]}'" for item in all_detected_words]
-    print(f"   Teks yang terdeteksi oleh OCR: {', '.join(detected_texts_for_debug[:15])}...")
-    return None
+        # Multiple preprocessing methods
+        preprocessing_methods = [
+            "default",
+            "enhanced_contrast", 
+            "threshold_otsu",
+            "threshold_adaptive",
+            "denoised",
+            "sharpened",
+            "high_contrast",
+            "morphology"
+        ]
+        
+        # Multiple scale factors
+        scale_factors = [1.0, 1.5, 2.0, 0.8]
+        
+        all_detections = []
+        best_match = None
+        best_score = 0
+        
+        for scale in scale_factors:
+            # Scale image if needed
+            if scale != 1.0:
+                h, w = image.shape[:2]
+                new_w, new_h = int(w * scale), int(h * scale)
+                if new_w > 0 and new_h > 0:
+                    scaled_image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+                else:
+                    continue
+            else:
+                scaled_image = image.copy()
+            
+            for method in preprocessing_methods:
+                try:
+                    print(f"   Testing: scale={scale:.1f}, method={method}")
+                    
+                    # Preprocess image
+                    processed_image = preprocess_image_for_ocr(scaled_image, method)
+                    
+                    # OCR detection dengan parameter yang lebih sensitif
+                    results = ocr_reader.readtext(
+                        processed_image,
+                        detail=1,
+                        paragraph=False,
+                        width_ths=0.7,
+                        height_ths=0.7,
+                        decoder='greedy'
+                    )
+                    
+                    for (bbox, detected_text, confidence) in results:
+                        if confidence < 0.05:  # Threshold sangat rendah
+                            continue
+                        
+                        # Adjust bbox if scaled
+                        if scale != 1.0:
+                            bbox = [(x/scale, y/scale) for x, y in bbox]
+                        
+                        # Normalize detected text
+                        detected_normalized = re.sub(r'\s+', ' ', detected_text.strip().lower())
+                        detected_words = set(detected_normalized.split())
+                        
+                        # Multiple similarity scoring
+                        similarity_scores = []
+                        
+                        # 1. Exact match (highest priority)
+                        if target_normalized == detected_normalized:
+                            similarity_scores.append(1.0)
+                            print(f"      ✅ EXACT: '{detected_text}' | conf: {confidence:.3f}")
+                        
+                        # 2. Contains match
+                        elif target_normalized in detected_normalized:
+                            similarity_scores.append(0.95)
+                            print(f"      🎯 CONTAINS (target in detected): '{detected_text}'")
+                        elif detected_normalized in target_normalized:
+                            similarity_scores.append(0.9)
+                            print(f"      🎯 CONTAINS (detected in target): '{detected_text}'")
+                        
+                        # 3. Word overlap scoring
+                        if len(target_words) > 0:
+                            common_words = target_words.intersection(detected_words)
+                            if len(common_words) > 0:
+                                word_overlap = len(common_words) / len(target_words)
+                                if word_overlap >= 0.5:  # At least 50% words match
+                                    similarity_scores.append(word_overlap * 0.85)
+                                    print(f"      📝 WORD OVERLAP ({word_overlap:.2f}): '{detected_text}' | common: {common_words}")
+                        
+                        # 4. Character overlap
+                        target_chars = set(''.join(target_normalized.split()))
+                        detected_chars = set(''.join(detected_normalized.split()))
+                        if len(target_chars) > 0:
+                            char_overlap = len(target_chars.intersection(detected_chars)) / len(target_chars)
+                            if char_overlap >= 0.6:  # At least 60% chars match
+                                similarity_scores.append(char_overlap * 0.7)
+                                print(f"      🔤 CHAR OVERLAP ({char_overlap:.2f}): '{detected_text}'")
+                        
+                        # 5. Fuzzy matching (if available)
+                        if fuzz:
+                            fuzzy_ratio = fuzz.ratio(target_normalized, detected_normalized) / 100
+                            if fuzzy_ratio >= 0.6:
+                                similarity_scores.append(fuzzy_ratio * 0.8)
+                                print(f"      🔄 FUZZY ({fuzzy_ratio:.2f}): '{detected_text}'")
+                        
+                        # 6. Partial string matching
+                        if len(target_text) >= 3:
+                            for i in range(len(target_text) - 2):
+                                substr = target_text[i:i+3].lower()
+                                if substr in detected_normalized:
+                                    partial_score = 0.4 + (len(substr) / len(target_text)) * 0.3
+                                    similarity_scores.append(partial_score)
+                                    print(f"      🔍 PARTIAL MATCH: '{substr}' in '{detected_text}'")
+                                    break
+                        
+                        # Calculate final score
+                        if similarity_scores:
+                            max_similarity = max(similarity_scores)
+                            
+                            # Boost score for high confidence
+                            confidence_boost = min(confidence * 0.2, 0.15)
+                            final_score = max_similarity + confidence_boost
+                            
+                            # Boost for exact length match
+                            if abs(len(target_text) - len(detected_text)) <= 2:
+                                final_score += 0.05
+                            
+                            detection_info = {
+                                'bbox': bbox,
+                                'text': detected_text,
+                                'confidence': confidence,
+                                'similarity': max_similarity,
+                                'final_score': final_score,
+                                'method': f"{method}_scale{scale:.1f}",
+                                'scale': scale
+                            }
+                            
+                            all_detections.append(detection_info)
+                            
+                            print(f"      📊 Score: {final_score:.3f} (sim: {max_similarity:.3f}, conf: {confidence:.3f})")
+                            
+                            if final_score > best_score:
+                                best_score = final_score
+                                best_match = detection_info
+                
+                except Exception as e:
+                    print(f"      ❌ Error with {method} at scale {scale}: {e}")
+                    continue
+        
+        # Jika tidak ada yang bagus, coba fuzzy search pada semua results
+        if (not best_match or best_score < 0.3) and all_detections and fuzz and process:
+            print("🔄 Trying fuzzy fallback search...")
+            try:
+                all_texts = [d['text'] for d in all_detections]
+                fuzzy_result = process.extractOne(
+                    target_text, 
+                    all_texts, 
+                    scorer=fuzz.token_sort_ratio,
+                    score_cutoff=50
+                )
+                
+                if fuzzy_result:
+                    matched_text, fuzzy_score = fuzzy_result
+                    matched_detection = next(d for d in all_detections if d['text'] == matched_text)
+                    matched_detection['similarity'] = fuzzy_score / 100
+                    matched_detection['final_score'] = (fuzzy_score / 100) * matched_detection['confidence']
+                    
+                    if matched_detection['final_score'] > best_score:
+                        best_match = matched_detection
+                        best_score = matched_detection['final_score']
+                        print(f"   ✅ Fuzzy fallback: '{matched_text}' | score: {fuzzy_score}")
+            
+            except Exception as e:
+                print(f"   ⚠️ Fuzzy fallback error: {e}")
+        
+        # Final attempt: word-by-word search
+        if (not best_match or best_score < 0.25) and len(target_text.split()) > 1:
+            print("🔄 Trying word-by-word detection...")
+            target_words = target_text.split()
+            
+            for word in target_words:
+                if len(word) >= 3:  # Skip short words
+                    try:
+                        word_result = enhanced_text_detection_system(image, word)
+                        if word_result:
+                            print(f"   ✅ Found word '{word}' from '{target_text}'")
+                            return word_result
+                    except:
+                        continue
+        
+        # Print summary
+        if best_match:
+            print(f"✅ FOUND: '{best_match['text']}' | Score: {best_score:.3f} | Method: {best_match['method']}")
+            return (best_match['bbox'], best_match['text'], best_match['confidence'], best_match['final_score'])
+        else:
+            print(f"❌ NOT FOUND: '{target_text}'")
+            print("📝 All detected texts (top 15):")
+            unique_texts = {}
+            for d in all_detections:
+                text = d['text']
+                if text not in unique_texts or d['confidence'] > unique_texts[text]['confidence']:
+                    unique_texts[text] = d
+            
+            sorted_detections = sorted(unique_texts.values(), key=lambda x: x['confidence'], reverse=True)[:15]
+            for i, detection in enumerate(sorted_detections):
+                print(f"   {i+1:2d}. '{detection['text']}' (conf: {detection['confidence']:.2f})")
+            
+            return None
+    
+    except Exception as e:
+        print(f"❌ Critical error in text detection: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 def extract_text_region_mask(image, bbox, padding=5):
     """
@@ -785,6 +916,23 @@ def enhanced_text_swap_pipeline(image_pil, original_text, new_text):
         
         print("🔍 Phase 1: Enhanced Text Detection")
         detection_result = enhanced_text_detection_system(image_bgr, original_text)
+        
+        if detection_result is None:
+            # Try with individual words as fallback
+            words = original_text.split()
+            if len(words) > 1:
+                print("🔄 Fallback: Trying individual words...")
+                for word in words:
+                    if len(word) >= 3:  # Skip very short words
+                        print(f"   🔍 Trying word: '{word}'")
+                        try:
+                            detection_result = enhanced_text_detection_system(image_bgr, word)
+                            if detection_result:
+                                print(f"   ✅ Success with word: '{word}'")
+                                break
+                        except Exception as e:
+                            print(f"   ❌ Word detection failed: {e}")
+                            continue
         
         if detection_result is None:
             # Provide helpful error message with detected texts
